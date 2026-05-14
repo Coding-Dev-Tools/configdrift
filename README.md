@@ -1,12 +1,12 @@
 # ConfigDrift
 
-Detect and fix configuration file drift across environments (dev/staging/prod).
+Your configs drifted again. ConfigDrift catches it before production does.
 
 [![PyPI](https://img.shields.io/pypi/v/configdrift)](https://pypi.org/project/configdrift/)
 [![Python](https://img.shields.io/pypi/pyversions/configdrift)](https://pypi.org/project/configdrift/)
 [![License](https://img.shields.io/pypi/l/configdrift)](https://github.com/Coding-Dev-Tools/configdrift/blob/main/LICENSE)
 
-ConfigDrift compares configuration files across environments and highlights drift, deprecated keys, and missing values. It supports YAML, JSON, TOML, and .env formats.
+**Why ConfigDrift?** Dev and prod configs always diverge — it's not if, it's when. One missing env var, one wrong endpoint, one stale secret, and your deployment breaks silently. ConfigDrift compares configurations across environments, highlights drift, deprecated keys, and missing values before they become incidents. Supports YAML, JSON, TOML, and .env — and it works in CI.
 
 ## Installation
 
