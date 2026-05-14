@@ -94,6 +94,12 @@ configdrift check dev.yaml prod.yaml --output silent || echo "Drift detected!"
 pip install -e ".[dev]"
 
 # Run tests
+pytest
+
+# Run with coverage
+pytest --cov=configdrift
+```
+
 ## Pricing
 
 One license covers all Revenue Holdings CLI tools. Pricing is per-seat.
