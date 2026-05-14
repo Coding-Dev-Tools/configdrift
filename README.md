@@ -1,12 +1,12 @@
 # ConfigDrift
 
-Your configs drifted again. ConfigDrift catches it before production does.
+Keep configurations consistent across all environments, automatically. ConfigDrift compares configs, flags drift, and reports compliance violations before they cause incidents.
 
 [![PyPI](https://img.shields.io/pypi/v/configdrift)](https://pypi.org/project/configdrift/)
 [![Python](https://img.shields.io/pypi/pyversions/configdrift)](https://pypi.org/project/configdrift/)
 [![License](https://img.shields.io/pypi/l/configdrift)](https://github.com/Coding-Dev-Tools/configdrift/blob/main/LICENSE)
 
-**Why ConfigDrift?** Dev and prod configs always diverge — it's not if, it's when. One missing env var, one wrong endpoint, one stale secret, and your deployment breaks silently. ConfigDrift compares configurations across environments, highlights drift, deprecated keys, and missing values before they become incidents. Supports YAML, JSON, TOML, and .env — and it works in CI.
+**Why ConfigDrift?** Environments should behave consistently. When dev, staging, and prod configs diverge, deployments break silently. ConfigDrift compares configurations across environments, highlights drifting keys, deprecated values, and missing settings — before they cause incidents. Supports YAML, JSON, TOML, and .env — and it runs in CI so drift never ships.
 
 ## Installation
 
@@ -126,6 +126,12 @@ One license covers all Revenue Holdings CLI tools. Pricing is per-seat.
 | RBAC | — | — | — | ✓ |
 | SSO / SAML / OIDC | — | — | — | ✓ |
 | Priority support | Community | 24h | 8h | Dedicated |
+
+---
+
+<p align="center">
+  <sub>Part of <a href="https://coding-dev-tools.github.io/revenueholdings.dev/">Revenue Holdings</a> — CLI tools built by autonomous AI.</sub>
+</p>
 
 ## License
 
