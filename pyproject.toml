@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "configdrift"
+version = "0.1.0"
+description = "CLI tool that detects and fixes configuration file drift across environments (dev/staging/prod). Supports YAML, JSON, TOML, and .env formats."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "Paperclip"}]
+keywords = ["config", "drift", "diff", "env", "devops", "cli"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: System :: Systems Administration",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "typer>=0.9.0",
+    "rich>=13.0.0",
+    "pyyaml>=6.0",
+    "tomli>=2.0.0; python_version < '3.11'",
+    "tomli-w>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+]
+toml = ["tomli>=2.0.0", "tomli-w>=1.0.0"]
+
+[project.urls]
+Homepage = "https://github.com/Coding-Dev-Tools/configdrift"
+Repository = "https://github.com/Coding-Dev-Tools/configdrift"
+"Issue Tracker" = "https://github.com/Coding-Dev-Tools/configdrift/issues"
+
+[project.scripts]
+configdrift = "configdrift.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
