@@ -108,30 +108,32 @@ pytest --cov=configdrift
 
 ## Pricing
 
-One license covers all Revenue Holdings CLI tools. Pricing is per-seat.
+ConfigDrift is one of eight tools in the Revenue Holdings suite. One license covers all CLI tools.
 
-| Tier | Price | Best For |
+| Plan | Price | Best For |
 |------|-------|----------|
-| **Open Source** | $0 | Individual devs, OSS projects — CLI only, 1 env pair |
-| **Pro** | **$29/mo** ($23 billed annually) | Professional devs — unlimited environments, custom rules |
-| **Team** | **$79/mo** ($63 billed annually) | Teams up to 5 — drift history, Slack alerts, priority support |
-| **Enterprise** | **$199/mo** (custom) | Organizations — compliance reports, RBAC, SSO, SLA |
+| **Free** | $0 | Individual devs, OSS — CLI only, 1 env pair |
+| **ConfigDrift Individual** | **$15/mo** ($12 billed annually) | Professional devs — unlimited environments, custom rules |
+| **Suite (all 8 tools)** | **$49/mo** ($39 billed annually) | Full Revenue Holdings toolkit — 40% savings |
+| **Team** | **$79/mo** ($63 billed annually) | Up to 5 devs — drift history, Slack alerts, priority support |
+| **Enterprise** | Custom | SSO, RBAC, compliance reports, dedicated support |
 
-🔹 **No lock-in**: CLI works fully offline on the free tier — no telemetry, no phone-home.  
-🔹 **Annual billing**: Save 20%.  
+🔹 **No lock-in**: CLI works fully offline on the free tier — no telemetry, no phone-home.
+🔹 **Annual billing**: Save 20%.
 
 ### Per-Tier Features
 
-| Feature | OSS | Pro | Team | Enterprise |
-|---------|:---:|:---:|:----:|:----------:|
-| CLI: check, scan | ✓ | ✓ | ✓ | ✓ |
-| Unlimited environments | — | ✓ | ✓ | ✓ |
-| Drift history / audit trail | — | — | ✓ | ✓ |
-| Slack / webhook alerts | — | — | ✓ | ✓ |
-| Compliance reports | — | — | — | ✓ |
-| RBAC | — | — | — | ✓ |
-| SSO / SAML / OIDC | — | — | — | ✓ |
-| Priority support | Community | 24h | 8h | Dedicated |
+| Feature | Free | ConfigDrift | Suite | Team | Enterprise |
+|---------|:----:|:-----------:|:-----:|:----:|:----------:|
+| CLI: check, scan | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Unlimited environments | — | ✓ | ✓ | ✓ | ✓ |
+| Custom rules / policies | — | ✓ | ✓ | ✓ | ✓ |
+| Drift history / audit trail | — | — | — | ✓ | ✓ |
+| Slack / webhook alerts | — | — | — | ✓ | ✓ |
+| Compliance reports | — | — | — | — | ✓ |
+| RBAC | — | — | — | — | ✓ |
+| SSO / SAML / OIDC | — | — | — | — | ✓ |
+| Priority support | Community | 24h | 24h | 8h | Dedicated |
 
 ---
 
