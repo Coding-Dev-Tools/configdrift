@@ -1,24 +1,11 @@
-# Python
 __pycache__/
-*.py[cod]
-*.egg-info/
+*.pyc
+*.pyo
+.env
+.venv/
+venv/
 dist/
-build/
-.eggs/
-*.egg
+*.egg-info/
 .pytest_cache/
 .coverage
 htmlcov/
-.venv/
-venv/
-env/
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
