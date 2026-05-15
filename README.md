@@ -14,6 +14,12 @@ Keep configurations consistent across all environments, automatically. ConfigDri
 pip install configdrift
 ```
 
+Or install directly from GitHub:
+
+```bash
+pip install git+https://github.com/Coding-Dev-Tools/configdrift.git
+```
+
 ## Quick Start
 
 Compare two config files:
