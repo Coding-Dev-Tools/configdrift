@@ -1,5 +1,7 @@
 # ConfigDrift
 
+[![GitHub stars](https://img.shields.io/github/stars/Coding-Dev-Tools/configdrift?style=social)](https://github.com/Coding-Dev-Tools/configdrift/stargazers)
+
 Keep configurations consistent across all environments, automatically. ConfigDrift compares configs, flags drift, and reports compliance violations before they cause incidents.
 
 [![PyPI](https://img.shields.io/pypi/v/configdrift)](https://pypi.org/project/configdrift/)
