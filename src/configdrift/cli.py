@@ -9,6 +9,8 @@ from rich.console import Console
 from rich.table import Table
 from rich.syntax import Syntax
 
+from revenueholdings_license import require_license
+
 from configdrift import __version__
 from configdrift.loader import load_file
 from configdrift.diff import (
@@ -43,7 +45,7 @@ def main(
         is_eager=True,
     ),
 ):
-    pass
+    require_license("configdrift")
 
 
 class OutputFormat(str, Enum):
