@@ -1,14 +1,11 @@
 """Tests for ConfigDrift CLI commands."""
 
 import json
-import os
 import tempfile
-from pathlib import Path
-
 import yaml
-from typer.testing import CliRunner
-
 from configdrift.cli import app
+from pathlib import Path
+from typer.testing import CliRunner
 
 runner = CliRunner()
 

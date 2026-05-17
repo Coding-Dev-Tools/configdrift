@@ -1,12 +1,12 @@
 """Tests for ConfigDrift diff engine."""
 
 from configdrift.diff import (
+    Change,
     ChangeType,
+    DiffResult,
     Severity,
     diff_configs,
     diff_environments,
-    DiffResult,
-    Change,
 )
 
 

@@ -57,7 +57,10 @@ class OutputFormat(str, Enum):
 @app.command()
 def check(
     files: list[str] = typer.Argument(..., help="Config files to compare (2+ files)."),  # noqa: B008
-    baseline: str = typer.Option("dev", "--baseline", "-b", help="Baseline environment name (used as label for first file in 2-file mode)."),  # noqa: B008
+    baseline: str = typer.Option(
+        "dev", "--baseline", "-b",
+        help="Baseline environment name (used as label for first file in 2-file mode).",
+    ),  # noqa: B008
     target: str = typer.Option("target", "--target", "-t", help="Target environment label for second file."),  # noqa: B008
     output: OutputFormat = typer.Option(OutputFormat.TABLE, "--output", "-o", help="Output format."),  # noqa: B008
 ):
@@ -111,7 +114,11 @@ def _output_table(results: dict[str, Any], baseline_env: str):
             symbol = {"added": "+", "removed": "-", "changed": "~"}[change.change_type.value]
             old_str = str(change.old_value) if change.old_value is not None else ""
             new_str = str(change.new_value) if change.new_value is not None else ""
-            sev_style = "red" if change.severity == Severity.BREAKING else "yellow" if change.severity == Severity.WARNING else "white"
+            sev_style = (
+            "red" if change.severity == Severity.BREAKING
+            else "yellow" if change.severity == Severity.WARNING
+            else "white"
+        )
             table.add_row(
                 change.key,
                 f"{symbol} {change.change_type.value}",
@@ -150,7 +157,9 @@ def _output_json(results: dict[str, Any]):
 
 @app.command()
 def scan(
-    dirs: list[str] | None = typer.Argument(None, help="Directories containing config files. Each dir is treated as an environment."),  # noqa: B008
+    dirs: list[str] | None = typer.Argument(  # noqa: B008
+        None, help="Directories containing config files. Each dir is treated as an environment.",
+    ),
     baseline: str = typer.Option("dev", "--baseline", "-b", help="Baseline directory name for comparison."),  # noqa: B008
     config: str | None = typer.Option(None, "--config", "-c", help="Path to .configdrift.yaml config file."),  # noqa: B008
     output: OutputFormat = typer.Option(OutputFormat.TABLE, "--output", "-o", help="Output format."),  # noqa: B008

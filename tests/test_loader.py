@@ -2,13 +2,10 @@
 
 import json
 import os
-import tempfile
-from pathlib import Path
-
 import pytest
+import tempfile
 import yaml
-
-from configdrift.loader import load_file, _load_dotenv, _flatten_nested
+from configdrift.loader import _flatten_nested, load_file
 
 
 class TestLoadYaml:

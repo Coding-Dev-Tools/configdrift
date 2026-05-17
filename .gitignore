@@ -70,3 +70,4 @@ Thumbs.db
 # Project specific
 research/
 fixtures/generated/
+.ruff_cache/
