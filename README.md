@@ -20,6 +20,7 @@ Or install directly from GitHub:
 
 ```bash
 pip install git+https://github.com/Coding-Dev-Tools/configdrift.git
+Or install via Homebrew (macOS/Linux):```bashbrew tap Coding-Dev-Tools/tapbrew install configdrift```Or install via Scoop (Windows):```bashscoop bucket add Coding-Dev-Tools https://github.com/Coding-Dev-Tools/scoop-bucketscoop install configdrift```
 ```
 
 ## Quick Start
