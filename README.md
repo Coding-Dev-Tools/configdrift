@@ -1,4 +1,4 @@
-# ConfigDrift
+﻿# ConfigDrift
 
 [![GitHub stars](https://img.shields.io/github/stars/Coding-Dev-Tools/configdrift?style=social)](https://github.com/Coding-Dev-Tools/configdrift/stargazers)
 
@@ -8,7 +8,7 @@ Keep configurations consistent across all environments, automatically. ConfigDri
 [![Python](https://img.shields.io/pypi/pyversions/configdrift)](https://pypi.org/project/configdrift/)
 [![License](https://img.shields.io/pypi/l/configdrift)](https://github.com/Coding-Dev-Tools/configdrift/blob/main/LICENSE)
 
-**Why ConfigDrift?** Environments should behave consistently. When dev, staging, and prod configs diverge, deployments break silently. ConfigDrift compares configurations across environments, highlights drifting keys, deprecated values, and missing settings — before they cause incidents. Supports YAML, JSON, TOML, and .env — and it runs in CI so drift never ships.
+**Why ConfigDrift?** Environments should behave consistently. When dev, staging, and prod configs diverge, deployments break silently. ConfigDrift compares configurations across environments, highlights drifting keys, deprecated values, and missing settings â€” before they cause incidents. Supports YAML, JSON, TOML, and .env â€” and it runs in CI so drift never ships.
 
 ## Installation
 
@@ -45,7 +45,7 @@ configdrift scan --config .configdrift.yaml
 
 ## Usage
 
-### `check` — Compare config files
+### `check` â€” Compare config files
 
 ```bash
 configdrift check <file1> <file2> [--output table|json|silent] [--baseline dev] [--target prod]
@@ -56,7 +56,7 @@ Output formats:
 - `json`: Machine-readable JSON for CI integration
 - `silent`: Exit code only (0 = no breaking drift, 1 = breaking drift found)
 
-### `scan` — Compare environment directories
+### `scan` â€” Compare environment directories
 
 ```bash
 configdrift scan ./dev ./staging ./prod --baseline dev
@@ -64,7 +64,7 @@ configdrift scan ./dev ./staging ./prod --baseline dev
 
 Scans all config files in each directory, merges them, and compares against a baseline environment.
 
-### `init` — Generate a config file
+### `init` â€” Generate a config file
 
 ```bash
 configdrift init .
@@ -114,35 +114,36 @@ ConfigDrift is one of eight tools in the Revenue Holdings suite. One license cov
 
 | Plan | Price | Best For |
 |------|-------|----------|
-| **Free** | $0 | Individual devs, OSS — CLI only, 1 env pair |
-| **ConfigDrift Individual** | **$15/mo** ($12 billed annually) | Professional devs — unlimited environments, custom rules |
-| **Suite (all 8 tools)** | **$49/mo** ($39 billed annually) | Full Revenue Holdings toolkit — 40% savings |
-| **Team** | **$79/mo** ($63 billed annually) | Up to 5 devs — drift history, Slack alerts, priority support |
+| **Free** | $0 | Individual devs, OSS â€” CLI only, 1 env pair |
+| **ConfigDrift Individual** | **$15/mo** ($12 billed annually) | Professional devs â€” unlimited environments, custom rules |
+| **Suite (all 8 tools)** | **$49/mo** ($39 billed annually) | Full Revenue Holdings toolkit â€” 40% savings |
+| **Team** | **$79/mo** ($63 billed annually) | Up to 5 devs â€” drift history, Slack alerts, priority support |
 | **Enterprise** | Custom | SSO, RBAC, compliance reports, dedicated support |
 
-🔹 **No lock-in**: CLI works fully offline on the free tier — no telemetry, no phone-home.
-🔹 **Annual billing**: Save 20%.
+ðŸ”¹ **No lock-in**: CLI works fully offline on the free tier â€” no telemetry, no phone-home.
+ðŸ”¹ **Annual billing**: Save 20%.
 
 ### Per-Tier Features
 
 | Feature | Free | ConfigDrift | Suite | Team | Enterprise |
 |---------|:----:|:-----------:|:-----:|:----:|:----------:|
-| CLI: check, scan | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Unlimited environments | — | ✓ | ✓ | ✓ | ✓ |
-| Custom rules / policies | — | ✓ | ✓ | ✓ | ✓ |
-| Drift history / audit trail | — | — | — | ✓ | ✓ |
-| Slack / webhook alerts | — | — | — | ✓ | ✓ |
-| Compliance reports | — | — | — | — | ✓ |
-| RBAC | — | — | — | — | ✓ |
-| SSO / SAML / OIDC | — | — | — | — | ✓ |
+| CLI: check, scan | âœ“ | âœ“ | âœ“ | âœ“ | âœ“ |
+| Unlimited environments | â€” | âœ“ | âœ“ | âœ“ | âœ“ |
+| Custom rules / policies | â€” | âœ“ | âœ“ | âœ“ | âœ“ |
+| Drift history / audit trail | â€” | â€” | â€” | âœ“ | âœ“ |
+| Slack / webhook alerts | â€” | â€” | â€” | âœ“ | âœ“ |
+| Compliance reports | â€” | â€” | â€” | â€” | âœ“ |
+| RBAC | â€” | â€” | â€” | â€” | âœ“ |
+| SSO / SAML / OIDC | â€” | â€” | â€” | â€” | âœ“ |
 | Priority support | Community | 24h | 24h | 8h | Dedicated |
 
 ---
 
 <p align="center">
-  <sub>Part of <a href="https://coding-dev-tools.github.io/revenueholdings.dev/">Revenue Holdings</a> — CLI tools built by autonomous AI.</sub>
+  <sub>Part of <a href="https://coding-dev-tools.github.io/revenueholdings.dev/">Revenue Holdings</a> â€” CLI tools built by autonomous AI.</sub>
 </p>
 
 ## License
 
 MIT
+
