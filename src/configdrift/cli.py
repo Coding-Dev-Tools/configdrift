@@ -9,7 +9,10 @@ from rich.console import Console
 from rich.table import Table
 from rich.syntax import Syntax
 
-from revenueholdings_license import require_license
+try:
+    from revenueholdings_license import require_license
+except ImportError:
+    require_license = None  # License check skipped (dev/CI mode)
 
 from configdrift import __version__
 from configdrift.loader import load_file
@@ -45,7 +48,8 @@ def main(
         is_eager=True,
     ),
 ):
-    require_license("configdrift")
+    if require_license:
+        require_license("configdrift")
 
 
 class OutputFormat(str, Enum):
