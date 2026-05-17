@@ -1,6 +1,7 @@
 ﻿# ConfigDrift
 
 [![GitHub stars](https://img.shields.io/github/stars/Coding-Dev-Tools/configdrift?style=social)](https://github.com/Coding-Dev-Tools/configdrift/stargazers)
+[![Awesome DevOps](https://img.shields.io/badge/Awesome_DevOps-Submitted-grey?logo=github)](https://github.com/wmariuss/awesome-devops)<!-- PR #433 -->
 
 Keep configurations consistent across all environments, automatically. ConfigDrift compares configs, flags drift, and reports compliance violations before they cause incidents.
 
