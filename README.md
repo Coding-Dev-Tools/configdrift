@@ -37,6 +37,12 @@ scoop bucket add Coding-Dev-Tools https://github.com/Coding-Dev-Tools/scoop-buck
 scoop install configdrift
 ```
 
+**npm (Node.js wrapper):**
+```bash
+npm install -g configdrift
+```
+Then run: `configdrift --help`
+
 ## Quick Start
 
 Compare two config files:
@@ -161,13 +167,3 @@ ConfigDrift is one of eight tools in the Revenue Holdings suite. One license cov
 ## License
 
 MIT
-
-
-
-## Install via npm
-
-```bash
-npm install -g configdrift
-```
-
-Then run: `configdrift --help`
