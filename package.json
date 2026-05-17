@@ -1,0 +1,33 @@
+{
+  "name": "configdrift",
+  "version": "0.1.0",
+  "description": "Detect configuration drift across your infrastructure. Monitor and alert on config changes in real-time.",
+  "author": "Revenue Holdings <engineering@revenueholdings.dev>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Coding-Dev-Tools/configdrift.git"
+  },
+  "homepage": "https://github.com/Coding-Dev-Tools/configdrift#readme",
+  "bugs": {
+    "url": "https://github.com/Coding-Dev-Tools/configdrift/issues"
+  },
+  "bin": {
+    "configdrift": "cli.js"
+  },
+  "keywords": [
+    "configuration",
+    "drift",
+    "devops",
+    "monitoring",
+    "cli",
+    "infrastructure"
+  ],
+  "files": [
+    "cli.js"
+  ],
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "preferGlobal": true
+}
