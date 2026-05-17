@@ -151,3 +151,12 @@ ConfigDrift is one of eight tools in the Revenue Holdings suite. One license cov
 
 MIT
 
+
+
+## Install via npm
+
+```bash
+npm install -g configdrift
+```
+
+Then run: `configdrift --help`
