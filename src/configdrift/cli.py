@@ -1,13 +1,11 @@
 """ConfigDrift CLI entry point."""
 
-from pathlib import Path
-from typing import Dict, Any, Optional
-from enum import Enum
-
 import typer
+from enum import Enum
+from pathlib import Path
 from rich.console import Console
 from rich.table import Table
-from rich.syntax import Syntax
+from typing import Any
 
 try:
     from revenueholdings_license import require_license
@@ -15,13 +13,11 @@ except ImportError:
     require_license = None  # License check skipped (dev/CI mode)
 
 from configdrift import __version__
-from configdrift.loader import load_file
 from configdrift.diff import (
-    ChangeType,
     Severity,
-    diff_configs,
     diff_environments,
 )
+from configdrift.loader import load_file
 
 app = typer.Typer(
     name="configdrift",
@@ -60,30 +56,27 @@ class OutputFormat(str, Enum):
 
 @app.command()
 def check(
-    files: list[str] = typer.Argument(..., help="Config files to compare (2+ files)."),
-    baseline: str = typer.Option("dev", "--baseline", "-b", help="Baseline environment name (used as label for first file in 2-file mode)."),
-    target: str = typer.Option("target", "--target", "-t", help="Target environment label for second file."),
-    output: OutputFormat = typer.Option(OutputFormat.TABLE, "--output", "-o", help="Output format."),
+    files: list[str] = typer.Argument(..., help="Config files to compare (2+ files)."),  # noqa: B008
+    baseline: str = typer.Option("dev", "--baseline", "-b", help="Baseline environment name (used as label for first file in 2-file mode)."),  # noqa: B008
+    target: str = typer.Option("target", "--target", "-t", help="Target environment label for second file."),  # noqa: B008
+    output: OutputFormat = typer.Option(OutputFormat.TABLE, "--output", "-o", help="Output format."),  # noqa: B008
 ):
     """Compare 2+ config files and report drift."""
     if len(files) < 2:
         console.print("[red]ERROR: Provide at least 2 config files to compare.[/red]")
         raise typer.Exit(code=1)
 
-    env_configs: Dict[str, Dict[str, Any]] = {}
+    env_configs: dict[str, dict[str, Any]] = {}
     env_labels = []
 
-    if len(files) == 2:
-        env_labels = [baseline, target]
-    else:
-        env_labels = [f"file_{i+1}" for i in range(len(files))]
+    env_labels = [baseline, target] if len(files) == 2 else [f"file_{i + 1}" for i in range(len(files))]
 
-    for label, filepath in zip(env_labels, files):
+    for label, filepath in zip(env_labels, files, strict=False):
         try:
             env_configs[label] = load_file(filepath)
         except Exception as e:
             console.print(f"[red]Error loading {filepath}: {e}[/red]")
-            raise typer.Exit(code=1)
+            raise typer.Exit(code=1) from e
 
     baseline_env = env_labels[0]
     results = diff_environments(env_configs, baseline_env=baseline_env)
@@ -102,7 +95,7 @@ def check(
         raise typer.Exit(code=1)
 
 
-def _output_table(results: Dict[str, Any], baseline_env: str):
+def _output_table(results: dict[str, Any], baseline_env: str):
     for env_name, diff_result in results.items():
         if not diff_result.changes:
             continue
@@ -134,7 +127,7 @@ def _output_table(results: Dict[str, Any], baseline_env: str):
         console.print()
 
 
-def _output_json(results: Dict[str, Any]):
+def _output_json(results: dict[str, Any]):
     import json
     output = {}
     for env_name, diff_result in results.items():
@@ -157,16 +150,16 @@ def _output_json(results: Dict[str, Any]):
 
 @app.command()
 def scan(
-    dirs: Optional[list[str]] = typer.Argument(None, help="Directories containing config files. Each dir is treated as an environment."),
-    baseline: str = typer.Option("dev", "--baseline", "-b", help="Baseline directory name for comparison."),
-    config: Optional[str] = typer.Option(None, "--config", "-c", help="Path to .configdrift.yaml config file."),
-    output: OutputFormat = typer.Option(OutputFormat.TABLE, "--output", "-o", help="Output format."),
+    dirs: list[str] | None = typer.Argument(None, help="Directories containing config files. Each dir is treated as an environment."),  # noqa: B008
+    baseline: str = typer.Option("dev", "--baseline", "-b", help="Baseline directory name for comparison."),  # noqa: B008
+    config: str | None = typer.Option(None, "--config", "-c", help="Path to .configdrift.yaml config file."),  # noqa: B008
+    output: OutputFormat = typer.Option(OutputFormat.TABLE, "--output", "-o", help="Output format."),  # noqa: B008
 ):
     """Scan directories of config files and compare environments."""
     if config:
         # Load config file for directory → env mapping (raw, not flattened)
         import yaml as _yaml
-        with open(config, "r", encoding="utf-8") as _f:
+        with open(config, encoding="utf-8") as _f:
             cfg_data = _yaml.safe_load(_f) or {}
         dir_mapping = cfg_data.get("environments", {})
     elif dirs:
@@ -183,7 +176,7 @@ def scan(
         console.print(f"[red]Baseline environment '{baseline}' not found.[/red]")
         raise typer.Exit(code=1)
 
-    env_configs: Dict[str, Dict[str, Any]] = {}
+    env_configs: dict[str, dict[str, Any]] = {}
     for env_name, dir_path in dir_mapping.items():
         env_configs[env_name] = {}
         p = Path(dir_path)

@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class ChangeType(Enum):
@@ -21,10 +21,10 @@ class Severity(Enum):
 class Change:
     key: str
     change_type: ChangeType
-    old_value: Optional[Any] = None
-    new_value: Optional[Any] = None
+    old_value: Any | None = None
+    new_value: Any | None = None
     severity: Severity = Severity.INFO
-    env: Optional[str] = None
+    env: str | None = None
 
     def __str__(self) -> str:
         if self.change_type == ChangeType.ADDED:
@@ -37,7 +37,7 @@ class Change:
 
 @dataclass
 class DiffResult:
-    changes: List[Change] = field(default_factory=list)
+    changes: list[Change] = field(default_factory=list)
 
     @property
     def has_breaking(self) -> bool:
@@ -47,14 +47,14 @@ class DiffResult:
     def count(self) -> int:
         return len(self.changes)
 
-    def by_type(self, change_type: ChangeType) -> List[Change]:
+    def by_type(self, change_type: ChangeType) -> list[Change]:
         return [c for c in self.changes if c.change_type == change_type]
 
-    def by_severity(self, severity: Severity) -> List[Change]:
+    def by_severity(self, severity: Severity) -> list[Change]:
         return [c for c in self.changes if c.severity == severity]
 
 
-def diff_configs(base: Dict[str, Any], target: Dict[str, Any],
+def diff_configs(base: dict[str, Any], target: dict[str, Any],
                  base_env: str = "base", target_env: str = "target") -> DiffResult:
     """Compare two flat config dictionaries and return the diff."""
     result = DiffResult()
@@ -93,8 +93,8 @@ def diff_configs(base: Dict[str, Any], target: Dict[str, Any],
     return result
 
 
-def diff_environments(env_configs: Dict[str, Dict[str, Any]],
-                      baseline_env: str = "dev") -> Dict[str, DiffResult]:
+def diff_environments(env_configs: dict[str, dict[str, Any]],
+                      baseline_env: str = "dev") -> dict[str, DiffResult]:
     """Compare multiple environments against a baseline."""
     if baseline_env not in env_configs:
         raise ValueError(f"Baseline environment '{baseline_env}' not found in configs")

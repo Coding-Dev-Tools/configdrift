@@ -25,6 +25,9 @@ jobs:
         run: |
           pip install -e ".[dev]"
 
+      - name: Lint with ruff
+        run: pip install ruff && ruff check src/ --target-version py310
       - name: Run tests
         run: |
           python -m pytest tests/ -v --cov=src --cov-report=term-missing
+

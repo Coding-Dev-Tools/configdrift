@@ -1,13 +1,12 @@
 """Configuration loaders for YAML, JSON, TOML, and .env formats."""
 
 import json
-import os
 import re
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 
-def load_file(path: str) -> Dict[str, Any]:
+def load_file(path: str) -> dict[str, Any]:
     """Load a config file based on its extension."""
     p = Path(path)
     ext = p.suffix.lower()
@@ -30,27 +29,27 @@ def load_file(path: str) -> Dict[str, Any]:
         try:
             return _load_dotenv(p)
         except Exception:
-            raise ValueError(f"Unsupported file format: {ext}")
+            raise ValueError(f"Unsupported file format: {ext}") from None
 
 
-def _load_yaml(path: Path) -> Dict[str, Any]:
+def _load_yaml(path: Path) -> dict[str, Any]:
     import yaml
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         data = yaml.safe_load(f)
     if not isinstance(data, dict):
         raise ValueError(f"YAML file must contain a mapping (dict), got {type(data).__name__}")
     return _flatten_nested(data)
 
 
-def _load_json(path: Path) -> Dict[str, Any]:
-    with open(path, "r", encoding="utf-8") as f:
+def _load_json(path: Path) -> dict[str, Any]:
+    with open(path, encoding="utf-8") as f:
         data = json.load(f)
     if not isinstance(data, dict):
         raise ValueError(f"JSON file must contain a mapping (dict), got {type(data).__name__}")
     return _flatten_nested(data)
 
 
-def _load_toml(path: Path) -> Dict[str, Any]:
+def _load_toml(path: Path) -> dict[str, Any]:
     try:
         import tomllib  # Python 3.11+
     except ImportError:
@@ -60,10 +59,10 @@ def _load_toml(path: Path) -> Dict[str, Any]:
     return _flatten_nested(data)
 
 
-def _load_dotenv(path: Path) -> Dict[str, Any]:
+def _load_dotenv(path: Path) -> dict[str, Any]:
     """Parse .env files. Returns flat key-value dict."""
     data = {}
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line or line.startswith("#"):
@@ -80,7 +79,7 @@ def _load_dotenv(path: Path) -> Dict[str, Any]:
     return data
 
 
-def _flatten_nested(d: Dict[str, Any], prefix: str = "") -> Dict[str, Any]:
+def _flatten_nested(d: dict[str, Any], prefix: str = "") -> dict[str, Any]:
     """Flatten nested dicts into dot-separated keys."""
     result = {}
     for key, value in d.items():
