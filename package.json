@@ -1,6 +1,6 @@
 {
   "name": "configdrift",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Detect configuration drift across your infrastructure. Monitor and alert on config changes in real-time.",
   "author": "Revenue Holdings <engineering@revenueholdings.dev>",
   "license": "MIT",
@@ -16,12 +16,21 @@
     "configdrift": "cli.js"
   },
   "keywords": [
-    "configuration",
-    "drift",
+    "configuration-drift",
+    "config-management",
     "devops",
+    "infrastructure",
     "monitoring",
+    "drift-detection",
+    "kubernetes",
+    "terraform",
+    "ansible",
+    "compliance",
     "cli",
-    "infrastructure"
+    "site-reliability",
+    "gitops",
+    "developer-tools",
+    "audit"
   ],
   "files": [
     "cli.js"
