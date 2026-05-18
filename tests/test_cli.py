@@ -66,6 +66,21 @@ class TestCheckCommand:
         assert result.exit_code == 1
         assert "Error loading" in result.stdout
 
+    def test_check_three_files(self):
+        """Compare three config files with auto-labeled environments."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            a = Path(tmpdir) / "a.yaml"
+            b = Path(tmpdir) / "b.yaml"
+            c = Path(tmpdir) / "c.yaml"
+            a.write_text(yaml.dump({"host": "localhost", "port": 8080}))
+            b.write_text(yaml.dump({"host": "staging.example.com", "port": 8080}))
+            c.write_text(yaml.dump({"host": "prod.example.com", "port": 443}))
+
+            result = runner.invoke(app, ["check", str(a), str(b), str(c)])
+            assert result.exit_code == 0
+            assert "file_1" in result.stdout or "Config Drift" in result.stdout
+            assert "prod.example.com" in result.stdout
+
     def test_check_less_than_two_files(self):
         """Only one file should error."""
         with tempfile.TemporaryDirectory() as tmpdir:

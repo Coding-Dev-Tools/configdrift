@@ -10,6 +10,33 @@ from configdrift.diff import (
 )
 
 
+class TestChangeStr:
+    def test_str_added(self):
+        """Change.__str__ for added key."""
+        c = Change(key="port", change_type=ChangeType.ADDED, new_value=8080, env="prod")
+        s = str(c)
+        assert "[+]" in s
+        assert "port" in s
+        assert "8080" in s
+        assert "prod" in s
+
+    def test_str_removed(self):
+        """Change.__str__ for removed key."""
+        c = Change(key="debug", change_type=ChangeType.REMOVED, old_value=True, env="dev")
+        s = str(c)
+        assert "[-]" in s
+        assert "debug" in s
+        assert "True" in s or "true" in s
+
+    def test_str_changed(self):
+        """Change.__str__ for changed key."""
+        c = Change(key="host", change_type=ChangeType.CHANGED, old_value="localhost", new_value="prod.example.com", env="prod")
+        s = str(c)
+        assert "[~]" in s
+        assert "localhost" in s
+        assert "prod.example.com" in s
+
+
 class TestDiffConfigs:
     def test_no_changes(self):
         base = {"host": "localhost", "port": 8080}
