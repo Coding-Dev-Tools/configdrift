@@ -132,13 +132,13 @@ pytest --cov=configdrift
 
 ## Pricing
 
-ConfigDrift is one of eight tools in the DevForge suite. One license covers all CLI tools.
+ConfigDrift is one of eleven tools in the DevForge suite. One license covers all CLI tools.
 
 | Plan | Price | Best For |
 |------|-------|----------|
 | **Free** | $0 | Individual devs, OSS — CLI only, 1 env pair |
 | **ConfigDrift Individual** | **$15/mo** ($12 billed annually) | Professional devs — unlimited environments, custom rules |
-| **Suite (all 8 tools)** | **$49/mo** ($39 billed annually) | Full DevForge toolkit — 40% savings |
+| **Suite (all 11 tools)** | **$49/mo** ($39 billed annually) | Full DevForge toolkit — 40% savings |
 | **Team** | **$79/mo** ($63 billed annually) | Up to 5 devs — drift history, Slack alerts, priority support |
 | **Enterprise** | Custom | SSO, RBAC, compliance reports, dedicated support |
 
