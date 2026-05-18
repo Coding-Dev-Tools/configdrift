@@ -85,6 +85,60 @@ class TestLoadDotenv:
         assert "This is a comment" not in result
 
 
+class TestLoadUnsupported:
+    """Tests for fallback behaviour with unknown file extensions."""
+
+    def test_fallback_yaml_content_in_cfg(self):
+        """Files with .cfg containing valid YAML should be parsed via fallback."""
+        content = yaml.dump({"key": "value", "nested": {"inner": 42}})
+        with tempfile.NamedTemporaryFile(suffix=".cfg", mode="w", delete=False) as f:
+            f.write(content)
+            f.flush()
+            result = load_file(f.name)
+        os.unlink(f.name)
+        assert result["key"] == "value"
+        assert result["nested.inner"] == 42
+
+    def test_fallback_yaml_as_json(self):
+        """Files with unknown ext containing valid JSON should be parsed via fallback."""
+        content = json.dumps({"host": "localhost", "port": 8080})
+        with tempfile.NamedTemporaryFile(suffix=".cnf", mode="w", delete=False) as f:
+            f.write(content)
+            f.flush()
+            result = load_file(f.name)
+        os.unlink(f.name)
+        assert result["host"] == "localhost"
+        assert result["port"] == 8080
+
+    def test_unsupported_format_fallback_to_dotenv(self):
+        """Files with unknown extension and no structured content fall through to .env parser and returns a dict."""
+        with tempfile.NamedTemporaryFile(suffix=".xyz", mode="w", delete=False) as f:
+            f.write("not a config")
+            f.flush()
+            result = load_file(f.name)
+        os.unlink(f.name)
+        assert isinstance(result, dict)
+
+    def test_unsupported_format_empty_result(self):
+        """Garbage content with unknown extension returns empty dict via .env fallback."""
+        with tempfile.NamedTemporaryFile(suffix=".xyz", mode="w", delete=False) as f:
+            f.write("!!!garbage!!!")
+            f.flush()
+            result = load_file(f.name)
+        os.unlink(f.name)
+        assert result == {}
+
+    def test_yaml_non_dict_raises(self):
+        """YAML containing a list (not a mapping) should raise ValueError."""
+        content = yaml.dump(["item1", "item2"])
+        with tempfile.NamedTemporaryFile(suffix=".yaml", mode="w", delete=False) as f:
+            f.write(content)
+            f.flush()
+            with pytest.raises(ValueError, match="YAML file must contain a mapping"):
+                load_file(f.name)
+        os.unlink(f.name)
+
+
 class TestFlattenNested:
     def test_flatten(self):
         data = {"a": {"b": {"c": 1}, "d": 2}, "e": 3}

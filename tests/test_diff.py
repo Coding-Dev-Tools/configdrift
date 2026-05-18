@@ -105,6 +105,24 @@ class TestDiffEnvironments:
         assert results["prod"].count == 1
 
 
+class TestChangeStr:
+    """Tests for Change.__str__()."""
+
+    def test_str_added(self):
+        c = Change(key="port", change_type=ChangeType.ADDED, new_value=8080, env="prod")
+        expected = "[+] port = 8080  (env: prod)"
+        assert str(c) == expected
+
+    def test_str_removed(self):
+        c = Change(key="port", change_type=ChangeType.REMOVED, old_value=8080, env="dev")
+        expected = "[-] port (was 8080)  (env: dev)"
+        assert str(c) == expected
+
+    def test_str_changed(self):
+        c = Change(key="host", change_type=ChangeType.CHANGED, old_value="localhost", new_value="prod.example.com", env="prod")
+        assert str(c) == "[~] host: 'localhost' \u2192 'prod.example.com'  (env: prod)"
+
+
 class TestDiffResultHelpers:
     def test_by_type(self):
         changes = [
