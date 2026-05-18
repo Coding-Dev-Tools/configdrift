@@ -2,25 +2,22 @@
 
 ## Supported Versions
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 0.x     | :white_check_mark: |
+We release patches for security vulnerabilities in the latest version.
 
 ## Reporting a Vulnerability
 
-We take security seriously. If you discover a vulnerability, please report it responsibly.
+**Please do not report security vulnerabilities through public GitHub issues.**
 
-**Do not** open a public GitHub issue for security vulnerabilities. Instead, please email security@codingdevtools.com with:
+Instead, please report them via GitHub's private vulnerability reporting feature:
 
-1. Description of the vulnerability
-2. Steps to reproduce
-3. Potential impact
-4. Any suggested fixes
+1. Go to the repository's Security tab
+2. Click "Report a vulnerability"
+3. Fill in the details
 
-We will acknowledge your report within 48 hours and aim to provide a fix within 7 days.
+We aim to respond within 48 hours and will keep you updated on the fix.
 
-## Disclosure Policy
+## Security Best Practices
 
-- We practice responsible disclosure
-- We ask that you give us reasonable time to fix the issue before public disclosure
-- We will credit researchers who report vulnerabilities (unless they prefer to remain anonymous)
+- Keep your dependencies up to date
+- Use `pip audit` to check for known vulnerabilities
+- Report any security concerns promptly
