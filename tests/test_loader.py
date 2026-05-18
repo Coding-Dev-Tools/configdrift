@@ -84,6 +84,45 @@ class TestLoadDotenv:
         assert result["KEY"] == "value"
         assert "This is a comment" not in result
 
+    def test_inline_comment(self):
+        """Inline comments after unquoted values should be stripped."""
+        content = "KEY=value # this is a comment\n"
+        with tempfile.NamedTemporaryFile(suffix=".env", mode="w", delete=False) as f:
+            f.write(content)
+            f.flush()
+            result = load_file(f.name)
+        os.unlink(f.name)
+        assert result["KEY"] == "value"
+
+    def test_inline_comment_quoted(self):
+        """Inline comment marker inside quoted values should be preserved."""
+        content = 'KEY="value # not a comment"\n'
+        with tempfile.NamedTemporaryFile(suffix=".env", mode="w", delete=False) as f:
+            f.write(content)
+            f.flush()
+            result = load_file(f.name)
+        os.unlink(f.name)
+        assert result["KEY"] == "value # not a comment"
+
+    def test_inline_comment_no_space(self):
+        """Hash without preceding space is not treated as a comment."""
+        content = "KEY=value#notacomment\n"
+        with tempfile.NamedTemporaryFile(suffix=".env", mode="w", delete=False) as f:
+            f.write(content)
+            f.flush()
+            result = load_file(f.name)
+        os.unlink(f.name)
+        assert result["KEY"] == "value#notacomment"
+
+    def test_empty_env(self):
+        """Empty .env file should return empty dict."""
+        with tempfile.NamedTemporaryFile(suffix=".env", mode="w", delete=False) as f:
+            f.write("")
+            f.flush()
+            result = load_file(f.name)
+        os.unlink(f.name)
+        assert result == {}
+
 
 class TestFlattenNested:
     def test_flatten(self):

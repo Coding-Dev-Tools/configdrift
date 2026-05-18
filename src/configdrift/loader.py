@@ -75,6 +75,9 @@ def _load_dotenv(path: Path) -> dict[str, Any]:
                 # Strip surrounding quotes
                 if len(val) >= 2 and val[0] == val[-1] and val[0] in ('"', "'"):
                     val = val[1:-1]
+                # Strip inline comments (space followed by hash) from unquoted values
+                elif ' #' in val:
+                    val = val.split(' #', 1)[0].rstrip()
                 data[key] = val
     return data
 
