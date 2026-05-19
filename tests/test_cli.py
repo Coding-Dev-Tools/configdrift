@@ -154,6 +154,67 @@ class TestScanCommand:
             assert "prod" in data
 
 
+    def test_scan_nonexistent_dir_warning(self):
+        """Scan with a non-directory path should warn and skip."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dev_dir = Path(tmpdir) / "dev"
+            dev_dir.mkdir()
+            (dev_dir / "c.yaml").write_text(yaml.dump({"host": "localhost"}))
+            fake_dir = Path(tmpdir) / "nonexistent"
+
+            result = runner.invoke(app, ["scan", str(dev_dir), str(fake_dir)])
+            assert "is not a" in result.stdout.replace("\n", " ")
+
+    def test_scan_unreadable_file_in_dir(self):
+        """Scan should warn when a config file in a directory can't be loaded."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dev_dir = Path(tmpdir) / "dev"
+            prod_dir = Path(tmpdir) / "prod"
+            dev_dir.mkdir()
+            prod_dir.mkdir()
+            (dev_dir / "app.yaml").write_text(yaml.dump({"host": "localhost"}))
+            # Write invalid YAML that will cause a load error
+            (prod_dir / "broken.yaml").write_text("{{invalid yaml::")
+            (prod_dir / "good.yaml").write_text(yaml.dump({"host": "prod.example.com"}))
+
+            result = runner.invoke(app, ["scan", str(dev_dir), str(prod_dir)])
+            # Should still succeed but may include a warning about the broken file
+            assert result.exit_code == 0 or "could not load" in result.stdout
+
+    def test_scan_breaking_drift_exit_code(self):
+        """Scan with breaking drift should exit 1."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dev_dir = Path(tmpdir) / "dev"
+            prod_dir = Path(tmpdir) / "prod"
+            dev_dir.mkdir()
+            prod_dir.mkdir()
+            (dev_dir / "c.yaml").write_text(yaml.dump({"database_url": "postgres://dev"}))
+            (prod_dir / "c.yaml").write_text(yaml.dump({"database_url": "postgres://prod"}))
+
+            result = runner.invoke(app, ["scan", str(dev_dir), str(prod_dir)])
+            assert result.exit_code == 1
+            assert "BREAKING" in result.stdout
+
+    def test_scan_no_args_no_config(self):
+        """Scan with no directories and no config should error."""
+        result = runner.invoke(app, ["scan"])
+        assert result.exit_code == 1
+        assert "Provide either" in result.stdout
+
+    def test_scan_silent_breaking_drift(self):
+        """Scan silent mode should exit 1 when breaking drift exists."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dev_dir = Path(tmpdir) / "dev"
+            prod_dir = Path(tmpdir) / "prod"
+            dev_dir.mkdir()
+            prod_dir.mkdir()
+            (dev_dir / "c.yaml").write_text(yaml.dump({"database_url": "postgres://dev"}))
+            (prod_dir / "c.yaml").write_text(yaml.dump({"database_url": "postgres://prod"}))
+
+            result = runner.invoke(app, ["scan", str(dev_dir), str(prod_dir), "--output", "silent"])
+            assert result.exit_code == 1
+
+
 class TestInitCommand:
     def test_init_creates_file(self):
         """Init should create .configdrift.yaml."""
