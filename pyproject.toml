@@ -20,6 +20,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
     "typer>=0.9.0",
@@ -40,8 +41,10 @@ toml = ["tomli>=2.0.0", "tomli-w>=1.0.0"]
 
 [project.urls]
 Homepage = "https://github.com/Coding-Dev-Tools/configdrift"
+Documentation = "https://coding-dev-tools.github.io/configdrift"
 Repository = "https://github.com/Coding-Dev-Tools/configdrift"
-"Issue Tracker" = "https://github.com/Coding-Dev-Tools/configdrift/issues"
+Issues = "https://github.com/Coding-Dev-Tools/configdrift/issues"
+Changelog = "https://github.com/Coding-Dev-Tools/configdrift/releases"
 
 [project.scripts]
 configdrift = "configdrift.cli:app"
