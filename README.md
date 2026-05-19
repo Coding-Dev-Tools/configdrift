@@ -9,8 +9,17 @@ Keep configurations consistent across all environments, automatically. ConfigDri
 [![GitHub release](https://img.shields.io/github/v/release/Coding-Dev-Tools/configdrift?label=latest)](https://github.com/Coding-Dev-Tools/configdrift/releases)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/Coding-Dev-Tools/configdrift/blob/main/LICENSE)
-[![Open Source Alternative](https://img.shields.io/badge/Open_Source_Alternative-%E2%87%92-blue?logo=opensourceinitiative)](https://www.opensourcealternative.to/project/configdrift)
+|[![Open Source Alternative](https://img.shields.io/badge/Open_Source_Alternative-%E2%87%92-blue?logo=opensourceinitiative)](https://www.opensourcealternative.to/project/configdrift)
+[![CI](https://github.com/Coding-Dev-Tools/configdrift/actions/workflows/ci.yml/badge.svg)](https://github.com/Coding-Dev-Tools/configdrift/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/configdrift)](https://pypi.org/project/configdrift/)
 
+
+
+Real-world scenarios:
+- **Multi-environment compliance**: Ensure staging and prod configs are identical before every deploy
+- **Secrets audit**: Detect env vars that exist in one environment but are missing in another
+- **CI/CD gating**: Block PRs that introduce config drift across environments
+- **Incident prevention**: Catch a changed database endpoint before it causes a production outage
 
 ## Installation
 
@@ -124,13 +133,13 @@ pytest --cov=configdrift
 
 ## Pricing
 
-ConfigDrift is one of 11 tools in the DevForge suite. One license covers all CLI tools.
+ConfigDrift is one of 11 tools in the Revenue Holdings suite. One license covers all CLI tools.
 
 | Plan | Price | Best For |
 |------|-------|----------|
 | **Free** | $0 | Individual devs, OSS — CLI only, 1 env pair |
 | **ConfigDrift Individual** | **$15/mo** ($12 billed annually) | Professional devs — unlimited environments, custom rules |
-| **Suite (all 11 tools)** | **$49/mo** ($39 billed annually) | Full DevForge toolkit — 40% savings |
+| **Suite (all 11 tools)** | **$49/mo** ($39 billed annually) | Full Revenue Holdings toolkit — 40% savings |
 | **Team** | **$79/mo** ($63 billed annually) | Up to 5 devs — drift history, Slack alerts, priority support |
 | **Enterprise** | Custom | SSO, RBAC, compliance reports, dedicated support |
 
