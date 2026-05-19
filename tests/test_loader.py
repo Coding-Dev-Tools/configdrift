@@ -54,6 +54,46 @@ class TestLoadToml:
 
 
 class TestLoadDotenv:
+    def test_export_prefix(self):
+        """Lines with 'export ' prefix should be parsed correctly."""
+        content = "export DATABASE_URL=postgres://localhost\nexport API_KEY=secret123\n"
+        with tempfile.NamedTemporaryFile(suffix=".env", mode="w", delete=False) as f:
+            f.write(content)
+            f.flush()
+            result = load_file(f.name)
+        os.unlink(f.name)
+        assert result["DATABASE_URL"] == "postgres://localhost"
+        assert result["API_KEY"] == "secret123"
+
+    def test_inline_comment_unquoted(self):
+        """Unquoted inline comments should be stripped from values."""
+        content = "HOST=localhost # production server\nPORT=8080#no space\n"
+        with tempfile.NamedTemporaryFile(suffix=".env", mode="w", delete=False) as f:
+            f.write(content)
+            f.flush()
+            result = load_file(f.name)
+        os.unlink(f.name)
+        assert result["HOST"] == "localhost"
+        assert result["PORT"] == "8080"
+
+    def test_inline_comment_inside_quotes(self):
+        """# inside quotes should be preserved in the value."""
+        content = 'URL="https://example.com/#anchor"\n'
+        with tempfile.NamedTemporaryFile(suffix=".env", mode="w", delete=False) as f:
+            f.write(content)
+            f.flush()
+            result = load_file(f.name)
+        os.unlink(f.name)
+        assert result["URL"] == "https://example.com/#anchor"
+
+    def test_empty_env_file(self):
+        """Empty .env file should return empty dict."""
+        with tempfile.NamedTemporaryFile(suffix=".env", mode="w", delete=False) as f:
+            f.write("")
+            f.flush()
+            result = load_file(f.name)
+        os.unlink(f.name)
+        assert result == {}
     def test_load_simple(self):
         content = "DATABASE_URL=postgres://localhost\nAPI_KEY=secret123\n"
         with tempfile.NamedTemporaryFile(suffix=".env", mode="w", delete=False) as f:
