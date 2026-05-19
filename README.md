@@ -10,16 +10,9 @@ Keep configurations consistent across all environments, automatically. ConfigDri
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/Coding-Dev-Tools/configdrift/blob/main/LICENSE)
 [![Open Source Alternative](https://img.shields.io/badge/Open_Source_Alternative-%E2%87%92-blue?logo=opensourceinitiative)](https://www.opensourcealternative.to/project/configdrift)
-[![LibHunt](https://img.shields.io/badge/LibHunt-%E2%87%92-blue?logo=codeigniter)](https://www.libhunt.com/r/Coding-Dev-Tools/configdrift)
 
 
 ## Installation
-
-```bash
-pip install configdrift
-```
-
-Or install directly from GitHub:
 
 ```bash
 pip install git+https://github.com/Coding-Dev-Tools/configdrift.git
@@ -37,9 +30,9 @@ scoop bucket add Coding-Dev-Tools https://github.com/Coding-Dev-Tools/scoop-buck
 scoop install configdrift
 ```
 
-**npm (Node.js wrapper):**
+**npm (Node.js wrapper — publishing pending):**
 ```bash
-npm install -g configdrift
+# Not yet available — install via pip instead
 ```
 Then run: `configdrift --help`
 
