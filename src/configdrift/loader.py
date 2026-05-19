@@ -67,8 +67,10 @@ def _load_dotenv(path: Path) -> dict[str, Any]:
             line = line.strip()
             if not line or line.startswith("#"):
                 continue
+            # Strip optional 'export ' prefix (common in shell-sourced .env files)
+            line_stripped = re.sub(r'^export\s+', '', line)
             # Parse KEY=VALUE or KEY="VALUE" or KEY='VALUE'
-            match = re.match(r'^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$', line)
+            match = re.match(r'^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$', line_stripped)
             if match:
                 key = match.group(1)
                 val = match.group(2).strip()
