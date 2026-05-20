@@ -39,6 +39,16 @@ class TestLoadJson:
         assert result["host"] == "localhost"
         assert result["db.port"] == 5432
 
+    def test_json_non_dict_raises(self):
+        """JSON containing a list (not a mapping) should raise ValueError."""
+        content = json.dumps(["item1", "item2"])
+        with tempfile.NamedTemporaryFile(suffix=".json", mode="w", delete=False) as f:
+            f.write(content)
+            f.flush()
+            with pytest.raises(ValueError, match="JSON file must contain a mapping"):
+                load_file(f.name)
+        os.unlink(f.name)
+
 
 class TestLoadToml:
     def test_load_simple(self):
@@ -137,6 +147,20 @@ class TestLoadUnsupported:
             with pytest.raises(ValueError, match="YAML file must contain a mapping"):
                 load_file(f.name)
         os.unlink(f.name)
+
+
+class TestLoadFallbackChain:
+    """Tests for the fallback chain when loaders fail and continue to next."""
+
+    def test_unknown_ext_fallback_yaml_then_json(self):
+        """Unknown extension: first YAML parser fails (non-dict), JSON parser succeeds."""
+        content = json.dumps({"host": "localhost"})
+        with tempfile.NamedTemporaryFile(suffix=".unk", mode="w", delete=False) as f:
+            f.write(content)
+            f.flush()
+            result = load_file(f.name)
+        os.unlink(f.name)
+        assert result["host"] == "localhost"
 
 
 class TestFlattenNested:
