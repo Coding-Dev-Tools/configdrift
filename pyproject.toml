@@ -31,7 +31,6 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-license = ["revenueholdings-license>=0.1.0"]
 dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",

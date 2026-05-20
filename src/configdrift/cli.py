@@ -1,23 +1,17 @@
 """ConfigDrift CLI entry point."""
 
 import typer
-from enum import Enum
-from pathlib import Path
-from rich.console import Console
-from rich.table import Table
-from typing import Any
-
-try:
-    from revenueholdings_license import require_license
-except ImportError:
-    require_license = None  # License check skipped (dev/CI mode)
-
 from configdrift import __version__
 from configdrift.diff import (
     Severity,
     diff_environments,
 )
 from configdrift.loader import load_file
+from enum import Enum
+from pathlib import Path
+from rich.console import Console
+from rich.table import Table
+from typing import Any
 
 app = typer.Typer(
     name="configdrift",
@@ -43,9 +37,8 @@ def main(
         callback=_version_callback,
         is_eager=True,
     ),
-):
-    if require_license:
-        require_license("configdrift")
+) -> None:
+    """ConfigDrift CLI — detect and fix configuration drift."""
 
 
 class OutputFormat(str, Enum):
