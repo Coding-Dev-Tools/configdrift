@@ -222,6 +222,23 @@ class TestLoadFileUnsupported:
             load_file("/nonexistent/path/config.yaml")
 
 
+    def test_dotenv_single_quoted_hash_inside(self):
+        """# inside single quotes should be preserved in the value."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            p = Path(tmpdir) / ".env"
+            p.write_text("URL='https://example.com/#anchor'\n")
+            result = load_file(str(p))
+            assert result["URL"] == "https://example.com/#anchor"
+
+    def test_dotenv_single_quoted_value_stripping(self):
+        """Single-quoted values should have quotes stripped."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            p = Path(tmpdir) / ".env"
+            p.write_text("MSG='hello world'\n")
+            result = load_file(str(p))
+            assert result["MSG"] == "hello world"
+
+
 class TestLoadFileFallback:
     def test_unknown_ext_tries_parsers(self):
         """Unknown extensions should try each parser in order."""
