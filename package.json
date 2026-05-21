@@ -1,6 +1,6 @@
 {
   "name": "configdrift",
-  "version": "0.1.1",
+  "version": "0.1.0",
   "description": "Detect configuration drift across your infrastructure. Monitor and alert on config changes in real-time.",
   "author": "Revenue Holdings <engineering@revenueholdings.dev>",
   "license": "MIT",
