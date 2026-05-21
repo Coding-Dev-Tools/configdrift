@@ -1,15 +1,16 @@
 """Unit tests for the diff engine (configdrift.diff)."""
 
+import pytest
 from configdrift.diff import (
     Change,
     ChangeType,
     DiffResult,
     Severity,
-    diff_configs,
-    diff_environments,
     _infer_severity_added,
     _infer_severity_changed,
     _infer_severity_removed,
+    diff_configs,
+    diff_environments,
 )
 
 
@@ -175,11 +176,8 @@ class TestDiffEnvironments:
 
     def test_invalid_baseline_raises(self):
         configs = {"dev": {"host": "localhost"}}
-        try:
+        with pytest.raises(ValueError, match="prod"):
             diff_environments(configs, baseline_env="prod")
-            assert False, "Should have raised ValueError"
-        except ValueError as e:
-            assert "prod" in str(e)
 
     def test_identical_environments_no_changes(self):
         configs = {

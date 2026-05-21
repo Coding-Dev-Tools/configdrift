@@ -91,6 +91,23 @@ class TestCheckCommand:
             assert "Provide at least 2 config files" in result.stdout
 
 
+    def test_check_with_custom_labels(self):
+        """Custom --baseline and --target labels should appear in output."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dev = Path(tmpdir) / "dev.yaml"
+            prod = Path(tmpdir) / "prod.yaml"
+            dev.write_text(yaml.dump({"host": "localhost"}))
+            prod.write_text(yaml.dump({"host": "prod.example.com", "port": 443}))
+
+            result = runner.invoke(app, [
+                "check", str(dev), str(prod),
+                "--baseline", "staging", "--target", "production",
+            ])
+            assert result.exit_code == 0
+            assert "staging" in result.stdout or "production" in result.stdout
+            assert "host" in result.stdout
+
+
 class TestScanCommand:
     def test_scan_two_dirs(self):
         """Scan directories as environments."""
