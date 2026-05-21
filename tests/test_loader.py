@@ -163,6 +163,40 @@ class TestLoadDotenv:
             result = load_file(str(p))
             assert result["EMPTY"] == ""
 
+    def test_dotenv_export_prefix(self):
+        """Lines with 'export ' prefix should be parsed correctly."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            p = Path(tmpdir) / ".env"
+            p.write_text("export DATABASE_URL=postgres://localhost\nexport API_KEY=secret123\n")
+            result = load_file(str(p))
+            assert result["DATABASE_URL"] == "postgres://localhost"
+            assert result["API_KEY"] == "secret123"
+
+    def test_dotenv_inline_comment_unquoted(self):
+        """Unquoted inline comments should be stripped from values."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            p = Path(tmpdir) / ".env"
+            p.write_text("HOST=localhost # production server\nPORT=8080#no space\n")
+            result = load_file(str(p))
+            assert result["HOST"] == "localhost"
+            assert result["PORT"] == "8080"
+
+    def test_dotenv_inline_comment_inside_quotes(self):
+        """# inside quotes should be preserved in the value."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            p = Path(tmpdir) / ".env"
+            p.write_text('URL="https://example.com/#anchor"\n')
+            result = load_file(str(p))
+            assert result["URL"] == "https://example.com/#anchor"
+
+    def test_dotenv_empty_file(self):
+        """Empty .env file should return empty dict."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            p = Path(tmpdir) / ".env"
+            p.write_text("")
+            result = load_file(str(p))
+            assert result == {}
+
 
 class TestLoadFileUnsupported:
     def test_unsupported_extension_unparsable_returns_empty(self):

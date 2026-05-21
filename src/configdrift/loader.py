@@ -59,6 +59,24 @@ def _load_toml(path: Path) -> dict[str, Any]:
     return _flatten_nested(data)
 
 
+def _strip_inline_comment(value: str) -> str:
+    """Strip unquoted inline comments from .env values.
+
+    Handles: KEY=value # comment  →  value
+    Preserves: KEY="val # ue"       →  "val # ue" (quotes stripped later)
+    """
+    in_single = False
+    in_double = False
+    for i, ch in enumerate(value):
+        if ch == '"' and not in_single:
+            in_double = not in_double
+        elif ch == "'" and not in_double:
+            in_single = not in_single
+        elif ch == "#" and not in_single and not in_double:
+            return value[:i].rstrip()
+    return value
+
+
 def _load_dotenv(path: Path) -> dict[str, Any]:
     """Parse .env files. Returns flat key-value dict."""
     data = {}
@@ -67,11 +85,15 @@ def _load_dotenv(path: Path) -> dict[str, Any]:
             line = line.strip()
             if not line or line.startswith("#"):
                 continue
+            # Strip optional 'export ' prefix (shell-style .env files)
+            line = re.sub(r'^export\s+', '', line)
             # Parse KEY=VALUE or KEY="VALUE" or KEY='VALUE'
             match = re.match(r'^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$', line)
             if match:
                 key = match.group(1)
                 val = match.group(2).strip()
+                # Strip inline comments (only outside quotes)
+                val = _strip_inline_comment(val)
                 # Strip surrounding quotes
                 if len(val) >= 2 and val[0] == val[-1] and val[0] in ('"', "'"):
                     val = val[1:-1]
