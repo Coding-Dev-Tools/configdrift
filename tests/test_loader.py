@@ -197,6 +197,15 @@ class TestLoadDotenv:
             result = load_file(str(p))
             assert result == {}
 
+    def test_dotenv_single_quoted_with_hash(self):
+        """Single-quoted values with # inside should preserve the hash."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            p = Path(tmpdir) / ".env"
+            p.write_text("URL='https://example.com/#anchor'\nLABEL='tag#1'\n")
+            result = load_file(str(p))
+            assert result["URL"] == "https://example.com/#anchor"
+            assert result["LABEL"] == "tag#1"
+
 
 class TestLoadFileUnsupported:
     def test_unsupported_extension_unparsable_returns_empty(self):
