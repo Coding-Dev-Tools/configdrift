@@ -43,6 +43,17 @@ class TestFlattenNested:
     def test_empty_dict(self):
         assert _flatten_nested({}) == {}
 
+    def test_none_value_converted_to_empty_string(self):
+        data = {"key": None}
+        result = _flatten_nested(data)
+        assert result["key"] == ""
+
+    def test_none_in_nested_dict(self):
+        data = {"database": {"host": None, "port": 5432}}
+        result = _flatten_nested(data)
+        assert result["database.host"] == ""
+        assert result["database.port"] == 5432
+
 
 class TestLoadYaml:
     def test_load_yaml(self):
