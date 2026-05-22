@@ -49,15 +49,15 @@ class OutputFormat(str, Enum):
 
 @app.command()
 def check(
-    files: list[str] = typer.Argument(..., help="Config files to compare (2+ files)."),  # noqa: B008
+    files: list[str] = typer.Argument(..., help="Config files to compare (2+ files; first file is baseline)."),  # noqa: B008
     baseline: str = typer.Option(
         "dev", "--baseline", "-b",
-        help="Baseline environment name (used as label for first file in 2-file mode).",
+        help="Baseline environment label (default: 'dev').",
     ),  # noqa: B008
-    target: str = typer.Option("target", "--target", "-t", help="Target environment label for second file."),  # noqa: B008
-    output: OutputFormat = typer.Option(OutputFormat.TABLE, "--output", "-o", help="Output format."),  # noqa: B008
+    target: str = typer.Option("target", "--target", "-t", help="Target environment label (default: 'target')."),  # noqa: B008
+    output: OutputFormat = typer.Option(OutputFormat.TABLE, "--output", "-o", help="Output format: table, json, or silent (exit code only)."),  # noqa: B008
 ):
-    """Compare 2+ config files and report drift."""
+    """Compare 2+ config files and report drift. Exits 1 if breaking drift found (useful for CI gating)."""
     if len(files) < 2:
         console.print("[red]ERROR: Provide at least 2 config files to compare.[/red]")
         raise typer.Exit(code=1)
