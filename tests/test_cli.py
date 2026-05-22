@@ -218,6 +218,37 @@ class TestScanCommand:
         assert result.exit_code == 1
         assert "Provide either" in result.stdout
 
+    def test_scan_strict_exits_on_any_drift(self):
+        """Scan --strict should exit 1 on non-breaking drift."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dev_dir = Path(tmpdir) / "dev"
+            prod_dir = Path(tmpdir) / "prod"
+            dev_dir.mkdir()
+            prod_dir.mkdir()
+            (dev_dir / "c.yaml").write_text(yaml.dump({"host": "localhost"}))
+            (prod_dir / "c.yaml").write_text(yaml.dump({"host": "prod.example.com"}))
+
+            # Without --strict, info-level changes exit 0
+            result = runner.invoke(app, ["scan", str(dev_dir), str(prod_dir)])
+            assert result.exit_code == 0
+
+            # With --strict, any drift exits 1
+            result = runner.invoke(app, ["scan", str(dev_dir), str(prod_dir), "--strict"])
+            assert result.exit_code == 1
+
+    def test_scan_strict_no_drift_exits_zero(self):
+        """Scan --strict should exit 0 when no drift exists."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dev_dir = Path(tmpdir) / "dev"
+            prod_dir = Path(tmpdir) / "prod"
+            dev_dir.mkdir()
+            prod_dir.mkdir()
+            (dev_dir / "c.yaml").write_text(yaml.dump({"host": "localhost"}))
+            (prod_dir / "c.yaml").write_text(yaml.dump({"host": "localhost"}))
+
+            result = runner.invoke(app, ["scan", str(dev_dir), str(prod_dir), "--strict"])
+            assert result.exit_code == 0
+
     def test_scan_silent_breaking_drift(self):
         """Scan silent mode should exit 1 when breaking drift exists."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -273,6 +304,44 @@ class TestInitCommand:
             result = runner.invoke(app, ["check", str(dev), str(prod)])
             assert result.exit_code == 1
             assert "BREAKING" in result.stdout
+
+    def test_check_strict_exits_on_any_drift_table(self):
+        """Check --strict should exit 1 on non-breaking drift in table mode."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            a = Path(tmpdir) / "a.yaml"
+            b = Path(tmpdir) / "b.yaml"
+            a.write_text(yaml.dump({"host": "localhost"}))
+            b.write_text(yaml.dump({"host": "staging.example.com"}))
+
+            # Without --strict, info-level changes exit 0
+            result = runner.invoke(app, ["check", str(a), str(b)])
+            assert result.exit_code == 0
+
+            # With --strict, any drift exits 1
+            result = runner.invoke(app, ["check", str(a), str(b), "--strict"])
+            assert result.exit_code == 1
+
+    def test_check_strict_silent_exits_on_any_drift(self):
+        """Check --strict with --output silent should exit 1 on any drift."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            a = Path(tmpdir) / "a.yaml"
+            b = Path(tmpdir) / "b.yaml"
+            a.write_text(yaml.dump({"host": "localhost"}))
+            b.write_text(yaml.dump({"host": "staging.example.com"}))
+
+            result = runner.invoke(app, ["check", str(a), str(b), "--output", "silent", "--strict"])
+            assert result.exit_code == 1
+
+    def test_check_strict_no_drift_exits_zero(self):
+        """Check --strict should exit 0 when no drift exists."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            a = Path(tmpdir) / "a.yaml"
+            b = Path(tmpdir) / "b.yaml"
+            a.write_text(yaml.dump({"host": "localhost"}))
+            b.write_text(yaml.dump({"host": "localhost"}))
+
+            result = runner.invoke(app, ["check", str(a), str(b), "--strict"])
+            assert result.exit_code == 0
 
     def test_check_dotenv_files(self):
         """Check command should work with .env files."""

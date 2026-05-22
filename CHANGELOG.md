@@ -6,6 +6,8 @@ All notable changes to ConfigDrift CLI will be documented in this file.
 
 ### Added
 
+- `--strict` flag for `check` and `scan` commands: exits 1 on ANY drift (not just breaking changes), useful for zero-tolerance CI/CD pipelines
+- 5 tests covering `--strict` behavior (check/scan, table/silent, drift/no-drift)
 - CLI test suite with comprehensive coverage for Change.\_\_str\_\_() and loader fallback paths
 - npm wrapper (`package.json` + `cli.js`) for npm publishing
 - GitHub Actions: npm publish workflow (release or manual dispatch)

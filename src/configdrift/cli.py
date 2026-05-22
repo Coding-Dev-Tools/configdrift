@@ -56,6 +56,7 @@ def check(
     ),  # noqa: B008
     target: str = typer.Option("target", "--target", "-t", help="Target environment label (default: 'target')."),  # noqa: B008
     output: OutputFormat = typer.Option(OutputFormat.TABLE, "--output", "-o", help="Output format: table, json, or silent (exit code only)."),  # noqa: B008
+    strict: bool = typer.Option(False, "--strict", help="Exit 1 on ANY drift, not just breaking changes."),  # noqa: B008
 ):
     """Compare 2+ config files and report drift. Exits 1 if breaking drift found (useful for CI gating)."""
     if len(files) < 2:
@@ -78,13 +79,19 @@ def check(
     if output == OutputFormat.JSON:
         _output_json(results)
     elif output == OutputFormat.SILENT:
-        has_drift = any(r.has_breaking for r in results.values())
+        if strict:
+            has_drift = any(r.count > 0 for r in results.values())
+        else:
+            has_drift = any(r.has_breaking for r in results.values())
         raise typer.Exit(code=1 if has_drift else 0)
     else:
         _output_table(results, baseline_env)
 
     # Exit codes for CI gating
-    has_drift = any(r.has_breaking for r in results.values())
+    if strict:
+        has_drift = any(r.count > 0 for r in results.values())
+    else:
+        has_drift = any(r.has_breaking for r in results.values())
     if has_drift:
         raise typer.Exit(code=1)
 
@@ -154,6 +161,7 @@ def scan(
     baseline: str = typer.Option("dev", "--baseline", "-b", help="Baseline directory name for comparison."),  # noqa: B008
     config: str | None = typer.Option(None, "--config", "-c", help="Path to .configdrift.yaml config file."),  # noqa: B008
     output: OutputFormat = typer.Option(OutputFormat.TABLE, "--output", "-o", help="Output format."),  # noqa: B008
+    strict: bool = typer.Option(False, "--strict", help="Exit 1 on ANY drift, not just breaking changes."),  # noqa: B008
 ):
     """Scan directories of config files and compare environments."""
     if config:
@@ -197,12 +205,18 @@ def scan(
     if output == OutputFormat.JSON:
         _output_json(results)
     elif output == OutputFormat.SILENT:
-        has_drift = any(r.has_breaking for r in results.values())
+        if strict:
+            has_drift = any(r.count > 0 for r in results.values())
+        else:
+            has_drift = any(r.has_breaking for r in results.values())
         raise typer.Exit(code=1 if has_drift else 0)
     else:
         _output_table(results, baseline)
 
-    has_drift = any(r.has_breaking for r in results.values())
+    if strict:
+        has_drift = any(r.count > 0 for r in results.values())
+    else:
+        has_drift = any(r.has_breaking for r in results.values())
     if has_drift:
         raise typer.Exit(code=1)
 
