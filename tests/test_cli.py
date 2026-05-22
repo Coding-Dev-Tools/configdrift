@@ -250,6 +250,76 @@ class TestInitCommand:
             assert "already exists" in result.stdout
 
 
+    def test_check_toml_files(self):
+        """Check command should work with TOML files."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dev = Path(tmpdir) / "dev.toml"
+            prod = Path(tmpdir) / "prod.toml"
+            dev.write_text('[server]\nhost = "localhost"\nport = 8080\n')
+            prod.write_text('[server]\nhost = "prod.example.com"\nport = 8080\n')
+
+            result = runner.invoke(app, ["check", str(dev), str(prod)])
+            assert result.exit_code == 0
+            assert "server.host" in result.stdout
+
+    def test_check_breaking_drift_table_exit_code(self):
+        """Breaking drift with table output should exit 1."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dev = Path(tmpdir) / "dev.yaml"
+            prod = Path(tmpdir) / "prod.yaml"
+            dev.write_text(yaml.dump({"database_url": "postgres://dev"}))
+            prod.write_text(yaml.dump({"database_url": "postgres://prod"}))
+
+            result = runner.invoke(app, ["check", str(dev), str(prod)])
+            assert result.exit_code == 1
+            assert "BREAKING" in result.stdout
+
+    def test_check_dotenv_files(self):
+        """Check command should work with .env files."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dev = Path(tmpdir) / ".env.dev"
+            prod = Path(tmpdir) / ".env.prod"
+            dev.write_text("HOST=localhost\nPORT=8080\n")
+            prod.write_text("HOST=prod.example.com\nPORT=8080\n")
+
+            result = runner.invoke(app, ["check", str(dev), str(prod)])
+            assert result.exit_code == 0
+            assert "HOST" in result.stdout
+
+    def test_scan_env_and_toml_dirs(self):
+        """Scan should load .env and .toml files from directories."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dev_dir = Path(tmpdir) / "dev"
+            prod_dir = Path(tmpdir) / "prod"
+            dev_dir.mkdir()
+            prod_dir.mkdir()
+            (dev_dir / "app.env").write_text("HOST=localhost\n")
+            (prod_dir / "app.env").write_text("HOST=prod.example.com\n")
+
+            result = runner.invoke(app, ["scan", str(dev_dir), str(prod_dir), "--output", "json"])
+            assert result.exit_code == 0
+            data = json.loads(result.stdout)
+            assert "prod" in data
+
+    def test_scan_no_changes_env_skipped_in_table(self):
+        """Scan with multiple envs where one has no changes."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dev_dir = Path(tmpdir) / "dev"
+            staging_dir = Path(tmpdir) / "staging"
+            prod_dir = Path(tmpdir) / "prod"
+            for d in [dev_dir, staging_dir, prod_dir]:
+                d.mkdir()
+            (dev_dir / "c.yaml").write_text(yaml.dump({"host": "localhost", "port": 8080}))
+            # staging is identical to dev — no changes
+            (staging_dir / "c.yaml").write_text(yaml.dump({"host": "localhost", "port": 8080}))
+            (prod_dir / "c.yaml").write_text(yaml.dump({"host": "prod.example.com", "port": 8080}))
+
+            result = runner.invoke(app, ["scan", str(dev_dir), str(staging_dir), str(prod_dir)])
+            assert result.exit_code == 0
+            # Should show prod drift but skip staging (no changes)
+            assert "prod" in result.stdout
+
+
 class TestVersionCommand:
     def test_version_output(self):
         """--version should print version and exit."""
