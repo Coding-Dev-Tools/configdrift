@@ -43,6 +43,17 @@ class TestFlattenNested:
     def test_empty_dict(self):
         assert _flatten_nested({}) == {}
 
+    def test_none_value_converted_to_empty_string(self):
+        data = {"key": None}
+        result = _flatten_nested(data)
+        assert result["key"] == ""
+
+    def test_none_in_nested_dict(self):
+        data = {"database": {"host": None, "port": 5432}}
+        result = _flatten_nested(data)
+        assert result["database.host"] == ""
+        assert result["database.port"] == 5432
+
 
 class TestLoadYaml:
     def test_load_yaml(self):
@@ -248,3 +259,42 @@ class TestLoadFileFallback:
             p.write_text("host: localhost\n")
             result = load_file(str(p))
             assert "host" in result
+
+
+class TestNullValues:
+    """Integration tests: null/None values through the full loader pipeline."""
+
+    def test_yaml_null_through_load_file(self):
+        """YAML null values should become empty string via load_file."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            p = Path(tmpdir) / "test.yaml"
+            p.write_text("host: null\nport: 8080\n")
+            result = load_file(str(p))
+            assert result["host"] == ""
+            assert result["port"] == 8080
+
+    def test_yaml_tilde_null_through_load_file(self):
+        """YAML ~ (tilde null) should become empty string via load_file."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            p = Path(tmpdir) / "test.yaml"
+            p.write_text("debug: ~\n")
+            result = load_file(str(p))
+            assert result["debug"] == ""
+
+    def test_json_null_through_load_file(self):
+        """JSON null values should become empty string via load_file."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            p = Path(tmpdir) / "test.json"
+            p.write_text(json.dumps({"host": None, "port": 8080}))
+            result = load_file(str(p))
+            assert result["host"] == ""
+            assert result["port"] == 8080
+
+    def test_nested_null_in_yaml_through_load_file(self):
+        """Nested YAML null values should become empty string."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            p = Path(tmpdir) / "nested.yaml"
+            p.write_text("database:\n  host: null\n  port: 5432\n")
+            result = load_file(str(p))
+            assert result["database.host"] == ""
+            assert result["database.port"] == 5432
