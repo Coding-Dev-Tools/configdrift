@@ -78,8 +78,26 @@ class TestCheckCommand:
 
             result = runner.invoke(app, ["check", str(a), str(b), str(c)])
             assert result.exit_code == 0
-            assert "file_1" in result.stdout or "Config Drift" in result.stdout
+            # First file should be labeled as baseline ("dev" by default)
+            assert "dev" in result.stdout or "Config Drift" in result.stdout
             assert "prod.example.com" in result.stdout
+
+    def test_check_three_files_custom_baseline(self):
+        """--baseline should label the first file in 3+ file mode."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            a = Path(tmpdir) / "a.yaml"
+            b = Path(tmpdir) / "b.yaml"
+            c = Path(tmpdir) / "c.yaml"
+            a.write_text(yaml.dump({"host": "localhost"}))
+            b.write_text(yaml.dump({"host": "staging.example.com"}))
+            c.write_text(yaml.dump({"host": "prod.example.com"}))
+
+            result = runner.invoke(app, [
+                "check", str(a), str(b), str(c),
+                "--baseline", "production",
+            ])
+            assert result.exit_code == 0
+            assert "production" in result.stdout
 
     def test_check_less_than_two_files(self):
         """Only one file should error."""

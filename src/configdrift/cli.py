@@ -63,7 +63,7 @@ def check(
         raise typer.Exit(code=1)
 
     env_configs: dict[str, dict[str, Any]] = {}
-    env_labels = [baseline, target] if len(files) == 2 else [f"file_{i + 1}" for i in range(len(files))]
+    env_labels = [baseline, target] if len(files) == 2 else [baseline] + [f"file_{i + 1}" for i in range(1, len(files))]
 
     for label, filepath in zip(env_labels, files, strict=False):
         try:
