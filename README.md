@@ -9,9 +9,9 @@ Keep configurations consistent across all environments, automatically. ConfigDri
 [![GitHub release](https://img.shields.io/github/v/release/Coding-Dev-Tools/configdrift?label=latest)](https://github.com/Coding-Dev-Tools/configdrift/releases)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/Coding-Dev-Tools/configdrift/blob/main/LICENSE)
-|[![Open Source Alternative](https://img.shields.io/badge/Open_Source_Alternative-%E2%87%92-blue?logo=opensourceinitiative)](https://www.opensourcealternative.to/project/configdrift)
+[![Open Source Alternative](https://img.shields.io/badge/Open_Source_Alternative-%E2%87%92-blue?logo=opensourceinitiative)](https://www.opensourcealternative.to/project/configdrift)
 [![CI](https://github.com/Coding-Dev-Tools/configdrift/actions/workflows/ci.yml/badge.svg)](https://github.com/Coding-Dev-Tools/configdrift/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/configdrift)](https://pypi.org/project/configdrift/)
+[![GitHub last commit](https://img.shields.io/github/last-commit/Coding-Dev-Tools/configdrift)](https://github.com/Coding-Dev-Tools/configdrift/commits)
 
 
 
@@ -27,22 +27,11 @@ Real-world scenarios:
 pip install git+https://github.com/Coding-Dev-Tools/configdrift.git
 ```
 
-Or install via Homebrew (macOS/Linux):
+Editable install for development:
 ```bash
-brew tap Coding-Dev-Tools/tap
-brew install configdrift
+pip install -e ".[dev]"
 ```
 
-Or install via Scoop (Windows):
-```bash
-scoop bucket add Coding-Dev-Tools https://github.com/Coding-Dev-Tools/scoop-bucket
-scoop install configdrift
-```
-
-**npm (Node.js wrapper — publishing pending):**
-```bash
-# Not yet available — install via pip instead
-```
 Then run: `configdrift --help`
 
 ## Quick Start
@@ -159,12 +148,6 @@ ConfigDrift is one of 11 tools in the Revenue Holdings suite. One license covers
 | RBAC | — | — | — | — | ✓ |
 | SSO / SAML / OIDC | — | — | — | — | ✓ |
 | Priority support | Community | 24h | 24h | 8h | Dedicated |
-
----
-
-<p align="center">
-  <sub>Part of <a href="https://coding-dev-tools.github.io/revenueholdings.dev/">Revenue Holdings</a> — CLI tools built by autonomous AI.</sub>
-</p>
 
 ## License
 
