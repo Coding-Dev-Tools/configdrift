@@ -1,6 +1,8 @@
 """Tests for ConfigDrift CLI commands."""
 
 import json
+import subprocess
+import sys
 import tempfile
 import yaml
 from configdrift.cli import app
@@ -8,6 +10,21 @@ from pathlib import Path
 from typer.testing import CliRunner
 
 runner = CliRunner()
+
+
+def test_cli_has_zero_sim108_violations() -> None:
+    """src/configdrift/cli.py must have zero SIM108 (ternary-op) violations."""
+    repo_root = Path(__file__).parent.parent
+    result = subprocess.run(
+        [sys.executable, "-m", "ruff", "check", "src/configdrift/cli.py", "--select=SIM108"],
+        cwd=str(repo_root),
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, (
+        f"ruff SIM108 violations in src/configdrift/cli.py:\n"
+        f"{result.stdout}\n{result.stderr}"
+    )
 
 
 class TestCheckCommand:

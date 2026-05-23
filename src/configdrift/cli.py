@@ -88,10 +88,7 @@ def check(
         _output_table(results, baseline_env)
 
     # Exit codes for CI gating
-    if strict:
-        has_drift = any(r.count > 0 for r in results.values())
-    else:
-        has_drift = any(r.has_breaking for r in results.values())
+    has_drift = any(r.count > 0 for r in results.values()) if strict else any(r.has_breaking for r in results.values())
     if has_drift:
         raise typer.Exit(code=1)
 
@@ -213,10 +210,7 @@ def scan(
     else:
         _output_table(results, baseline)
 
-    if strict:
-        has_drift = any(r.count > 0 for r in results.values())
-    else:
-        has_drift = any(r.has_breaking for r in results.values())
+    has_drift = any(r.count > 0 for r in results.values()) if strict else any(r.has_breaking for r in results.values())
     if has_drift:
         raise typer.Exit(code=1)
 
