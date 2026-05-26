@@ -1,10 +1,12 @@
 """Unit tests for config file loaders (configdrift.loader)."""
 
 import json
-import pytest
 import tempfile
-from configdrift.loader import _flatten_nested, load_file
 from pathlib import Path
+
+import pytest
+
+from configdrift.loader import _flatten_nested, load_file
 
 
 class TestFlattenNested:

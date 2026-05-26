@@ -1,17 +1,19 @@
 """ConfigDrift CLI entry point."""
 
+from enum import Enum
+from pathlib import Path
+from typing import Any
+
 import typer
+from rich.console import Console
+from rich.table import Table
+
 from configdrift import __version__
 from configdrift.diff import (
     Severity,
     diff_environments,
 )
 from configdrift.loader import load_file
-from enum import Enum
-from pathlib import Path
-from rich.console import Console
-from rich.table import Table
-from typing import Any
 
 app = typer.Typer(
     name="configdrift",

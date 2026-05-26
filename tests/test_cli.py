@@ -4,10 +4,12 @@ import json
 import subprocess
 import sys
 import tempfile
-import yaml
-from configdrift.cli import app
 from pathlib import Path
+
+import yaml
 from typer.testing import CliRunner
+
+from configdrift.cli import app
 
 runner = CliRunner()
 

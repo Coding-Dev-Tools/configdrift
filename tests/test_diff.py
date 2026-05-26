@@ -1,6 +1,7 @@
 """Unit tests for the diff engine (configdrift.diff)."""
 
 import pytest
+
 from configdrift.diff import (
     Change,
     ChangeType,
