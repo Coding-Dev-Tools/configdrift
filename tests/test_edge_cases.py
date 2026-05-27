@@ -7,8 +7,6 @@ import sys
 import tempfile
 from pathlib import Path
 
-import pytest
-
 from configdrift.loader import load_file
 
 

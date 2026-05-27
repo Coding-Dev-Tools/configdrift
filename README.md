@@ -60,7 +60,7 @@ configdrift scan --config .configdrift.yaml
 ### `check` — Compare config files
 
 ```bash
-configdrift check <file1> <file2> [--output table|json|silent] [--baseline dev] [--target prod]
+configdrift check <file1> <file2> [--output table|json|silent] [--baseline dev] [--target prod] [--strict]
 ```
 
 Output formats:
@@ -68,13 +68,15 @@ Output formats:
 - `json`: Machine-readable JSON for CI integration
 - `silent`: Exit code only (0 = no breaking drift, 1 = breaking drift found)
 
+**`--strict`**: Exit 1 on *any* drift, not just breaking changes. Useful for zero-tolerance CI gating.
+
 ### `scan` — Compare environment directories
 
 ```bash
-configdrift scan ./dev ./staging ./prod --baseline dev
+configdrift scan ./dev ./staging ./prod --baseline dev [--strict]
 ```
 
-Scans all config files in each directory, merges them, and compares against a baseline environment.
+Scans all config files in each directory, merges them, and compares against a baseline environment. Pass `--strict` to exit 1 on any drift, not just breaking changes.
 
 ### `init` — Generate a config file
 
@@ -86,11 +88,14 @@ Creates `.configdrift.yaml` in the specified directory.
 
 ### CI/CD Integration
 
-Use `--output silent` for CI gating:
+Use `--output silent` and/or `--strict` for CI gating:
 
 ```bash
-configdrift check dev.yaml prod.yaml --output silent || echo "Drift detected!"
-```
+# Fail on breaking drift only
+configdrift check dev.yaml prod.yaml --output silent || echo "Breaking drift detected!"
+
+# Zero-tolerance: fail on any drift
+configdrift check dev.yaml prod.yaml --strict --output silent || echo "Drift detected!"
 
 ## Supported Formats
 
