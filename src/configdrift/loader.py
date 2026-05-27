@@ -5,6 +5,9 @@ import re
 from pathlib import Path
 from typing import Any
 
+import importlib
+_toml = importlib.import_module("tomllib" if __import__("sys").version_info >= (3, 11) else "tomli")
+
 
 def load_file(path: str) -> dict[str, Any]:
     """Load a config file based on its extension."""
@@ -50,13 +53,9 @@ def _load_json(path: Path) -> dict[str, Any]:
 
 
 def _load_toml(path: Path) -> dict[str, Any]:
-    try:
-        import tomllib  # Python 3.11+
-    except ImportError:
-        import tomli as tomllib  # Python 3.10
     with open(path, "rb") as f:
-        data = tomllib.load(f)
-    return _flatten_nested(data)
+        data = _toml.load(f)
+        return _flatten_nested(data)
 
 
 def _strip_inline_comment(value: str) -> str:
