@@ -1,11 +1,11 @@
 """Configuration loaders for YAML, JSON, TOML, and .env formats."""
 
+import importlib
 import json
 import re
 from pathlib import Path
 from typing import Any
 
-import importlib
 _toml = importlib.import_module("tomllib" if __import__("sys").version_info >= (3, 11) else "tomli")
 
 
