@@ -1,4 +1,5 @@
 """Targeted coverage tests for uncovered lines in loader.py and cli.py."""
+import pytest
 import tempfile
 import yaml
 from configdrift.cli import app
@@ -29,20 +30,33 @@ class TestLoadDotenvQuoteStrip:
     """Cover loader.py:99 — quote stripping in _load_dotenv."""
 
     def test_quote_stripping_double(self):
-        """Line 99: surrounding double quotes should be stripped via .env."""
+        """Line 99: surrounding double quotes via _load_dotenv direct."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            p = Path(tmpdir) / ".env"
+            p = Path(tmpdir) / "test.env"
             p.write_text('DB_HOST="localhost"\n')
             result = load_file(str(p))
             assert result == {"DB_HOST": "localhost"}
 
     def test_quote_stripping_single(self):
-        """Line 99: surrounding single quotes should be stripped via .env."""
+        """Line 99: surrounding single quotes via _load_dotenv direct."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            p = Path(tmpdir) / ".env"
+            p = Path(tmpdir) / "test.env"
             p.write_text("DB_HOST='localhost'\n")
             result = load_file(str(p))
             assert result == {"DB_HOST": "localhost"}
+
+
+class TestLoaderLine3132:
+    """Cover loader.py:31-32 — ValueError fallback when _load_dotenv fails."""
+
+    def test_unknown_ext_invalid_utf8_raises_valueerror(self):
+        """Line 31-32: unknown extension with non-UTF-8 content triggers ValueError."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            p = Path(tmpdir) / "config.bin"
+            # Binary bytes that can't be decoded as UTF-8
+            p.write_bytes(b'\xff\xfe\x00\x00hello')
+            with pytest.raises(ValueError, match="Unsupported file format: .bin"):
+                load_file(str(p))
 
 
 class TestCliLine206:
