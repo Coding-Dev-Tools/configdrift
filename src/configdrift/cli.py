@@ -110,10 +110,10 @@ def _output_table(results: dict[str, Any], baseline_env: str):
             old_str = str(change.old_value) if change.old_value is not None else ""
             new_str = str(change.new_value) if change.new_value is not None else ""
             sev_style = (
-            "red" if change.severity == Severity.BREAKING
-            else "yellow" if change.severity == Severity.WARNING
-            else "white"
-        )
+                "red" if change.severity == Severity.BREAKING
+                else "yellow" if change.severity == Severity.WARNING
+                else "white"
+            )
             table.add_row(
                 change.key,
                 f"{symbol} {change.change_type.value}",

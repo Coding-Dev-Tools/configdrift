@@ -108,23 +108,25 @@ def diff_environments(env_configs: dict[str, dict[str, Any]],
     return results
 
 
+_CRITICAL_PREFIXES = (
+    "database", "auth", "api_key", "secret", "password", "token", "endpoint",
+)
+
+
 def _infer_severity_added(key: str, value: Any) -> Severity:
     """Heuristic: critical keys missing from base indicate drift."""
-    critical_prefixes = ("database", "auth", "api_key", "secret", "password", "token", "endpoint")
-    if any(key.lower().startswith(p) for p in critical_prefixes):
+    if any(key.lower().startswith(p) for p in _CRITICAL_PREFIXES):
         return Severity.BREAKING
     return Severity.WARNING
 
 
 def _infer_severity_removed(key: str, value: Any) -> Severity:
-    critical_prefixes = ("database", "auth", "api_key", "secret", "password", "token", "endpoint")
-    if any(key.lower().startswith(p) for p in critical_prefixes):
+    if any(key.lower().startswith(p) for p in _CRITICAL_PREFIXES):
         return Severity.BREAKING
     return Severity.WARNING
 
 
 def _infer_severity_changed(key: str, old: Any, new: Any) -> Severity:
-    critical_prefixes = ("database", "auth", "api_key", "secret", "password", "token", "endpoint")
-    if any(key.lower().startswith(p) for p in critical_prefixes):
+    if any(key.lower().startswith(p) for p in _CRITICAL_PREFIXES):
         return Severity.BREAKING
     return Severity.INFO
