@@ -55,10 +55,10 @@ def check(
         help="Baseline environment label (default: 'dev').",
     ),  # noqa: B008
  target: str = typer.Option("target", "--target", "-t", help="Target env label (default: 'target')."), # noqa: B008
-    output: OutputFormat = typer.Option(
+    output: OutputFormat = typer.Option(  # noqa: B008
         OutputFormat.TABLE, "--output", "-o",
         help="Format: table, json, silent (exit code only).",
-    ),  # noqa: B008
+    ),
     strict: bool = typer.Option(False, "--strict", help="Exit 1 on ANY drift, not just breaking changes."),  # noqa: B008
 ):
     """Compare 2+ config files and report drift. Exits 1 if breaking drift found (useful for CI gating)."""
