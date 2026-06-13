@@ -228,3 +228,51 @@ class TestSeverityInference:
     def test_case_insensitive_prefix(self):
         assert _infer_severity_added("Database_url", "x") == Severity.BREAKING
         assert _infer_severity_added("API_KEY", "x") == Severity.BREAKING
+
+
+class TestSeveritySubstringMatch:
+    """Regression tests: severity must be BREAKING when the critical term appears
+    anywhere in the key name (substring match), not only as a prefix.
+
+    Prior bug: ``key.lower().startswith(p)`` caused keys like ``db_password``
+    and ``jwt_token`` to be classified as WARNING instead of BREAKING.
+    """
+
+    def test_embedded_password(self):
+        assert _infer_severity_added("db_password", "x") == Severity.BREAKING
+
+    def test_embedded_token(self):
+        assert _infer_severity_removed("jwt_token", "x") == Severity.BREAKING
+
+    def test_embedded_secret_changed(self):
+        assert _infer_severity_changed("app_secret_key", "a", "b") == Severity.BREAKING
+
+    def test_embedded_auth(self):
+        assert _infer_severity_added("mysql_auth_url", "x") == Severity.BREAKING
+
+    def test_embedded_endpoint(self):
+        assert _infer_severity_removed("connection_endpoint", "x") == Severity.BREAKING
+
+    def test_embedded_api_key(self):
+        assert _infer_severity_added("main_api_key_id", "x") == Severity.BREAKING
+
+    def test_embedded_oauth_token(self):
+        assert _infer_severity_removed("oauth_token", "x") == Severity.BREAKING
+
+    def test_embedded_database(self):
+        assert _infer_severity_added("mysql_database_name", "x") == Severity.BREAKING
+
+    def test_non_sensitive_still_warning_added(self):
+        assert _infer_severity_added("cache_ttl", "300") == Severity.WARNING
+
+    def test_non_sensitive_still_info_changed(self):
+        assert _infer_severity_changed("log_level", "debug", "info") == Severity.INFO
+
+    def test_diff_configs_detects_embedded_breaking(self):
+        """End-to-end: diff_configs must surface BREAKING for embedded-term keys."""
+        base = {"db_password": "old_secret", "port": "8080"}
+        target = {"db_password": "new_secret", "port": "9090"}
+        result = diff_configs(base, target)
+        assert result.has_breaking, "expected BREAKING for db_password change"
+        breaking = result.by_severity(Severity.BREAKING)
+        assert any(c.key == "db_password" for c in breaking)

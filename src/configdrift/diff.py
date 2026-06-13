@@ -114,19 +114,19 @@ _CRITICAL_PREFIXES = (
 
 
 def _infer_severity_added(key: str, value: Any) -> Severity:
-    """Heuristic: critical keys missing from base indicate drift."""
-    if any(key.lower().startswith(p) for p in _CRITICAL_PREFIXES):
+    """Heuristic: classify severity as BREAKING if the key contains a critical term anywhere (substring match)."""
+    if any(p in key.lower() for p in _CRITICAL_PREFIXES):
         return Severity.BREAKING
     return Severity.WARNING
 
 
 def _infer_severity_removed(key: str, value: Any) -> Severity:
-    if any(key.lower().startswith(p) for p in _CRITICAL_PREFIXES):
+    if any(p in key.lower() for p in _CRITICAL_PREFIXES):
         return Severity.BREAKING
     return Severity.WARNING
 
 
 def _infer_severity_changed(key: str, old: Any, new: Any) -> Severity:
-    if any(key.lower().startswith(p) for p in _CRITICAL_PREFIXES):
+    if any(p in key.lower() for p in _CRITICAL_PREFIXES):
         return Severity.BREAKING
     return Severity.INFO
