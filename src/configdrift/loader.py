@@ -1,9 +1,12 @@
 """Configuration loaders for YAML, JSON, TOML, and .env formats."""
 
+import importlib
 import json
 import re
 from pathlib import Path
 from typing import Any
+
+_toml = importlib.import_module("tomllib" if __import__("sys").version_info >= (3, 11) else "tomli")
 
 
 def load_file(path: str) -> dict[str, Any]:
@@ -50,13 +53,9 @@ def _load_json(path: Path) -> dict[str, Any]:
 
 
 def _load_toml(path: Path) -> dict[str, Any]:
-    try:
-        import tomllib  # Python 3.11+
-    except ImportError:
-        import tomli as tomllib  # Python 3.10
     with open(path, "rb") as f:
-        data = tomllib.load(f)
-    return _flatten_nested(data)
+        data = _toml.load(f)
+        return _flatten_nested(data)
 
 
 def _strip_inline_comment(value: str) -> str:
@@ -109,8 +108,5 @@ def _flatten_nested(d: dict[str, Any], prefix: str = "") -> dict[str, Any]:
         if isinstance(value, dict):
             result.update(_flatten_nested(value, full_key))
         else:
-            if value is None:
-                result[full_key] = ""
-            else:
-                result[full_key] = str(value) if not isinstance(value, (str, int, float, bool)) else value
+            result[full_key] = str(value) if not isinstance(value, str | int | float | bool) else value
     return result

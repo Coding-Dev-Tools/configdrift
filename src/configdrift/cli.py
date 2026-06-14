@@ -96,7 +96,7 @@ def check(
         raise typer.Exit(code=1)
 
 
-def _output_table(results: dict[str, Any], baseline_env: str):
+def _output_table(results: dict[str, Any], baseline_env: str) -> None:
     for env_name, diff_result in results.items():
         if not diff_result.changes:
             continue
@@ -132,7 +132,7 @@ def _output_table(results: dict[str, Any], baseline_env: str):
         console.print()
 
 
-def _output_json(results: dict[str, Any]):
+def _output_json(results: dict[str, Any]) -> None:
     import json
     output = {}
     for env_name, diff_result in results.items():
