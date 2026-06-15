@@ -1,6 +1,15 @@
 """ConfigDrift CLI entry point."""
 
 import typer
+
+try:
+    from revenueholdings_license import require_license
+except ImportError:
+    import warnings
+    warnings.warn("revenueholdings-license not installed; license checks skipped", stacklevel=2)
+    def require_license(product: str) -> None:  # type: ignore[misc]
+        pass
+
 from configdrift import __version__
 from configdrift.diff import (
     Severity,
