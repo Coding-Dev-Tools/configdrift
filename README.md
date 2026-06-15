@@ -10,8 +10,8 @@ Keep configurations consistent across all environments, automatically. ConfigDri
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/Coding-Dev-Tools/configdrift/blob/main/LICENSE)
 [![Open Source Alternative](https://img.shields.io/badge/Open_Source_Alternative-%E2%87%92-blue?logo=opensourceinitiative)](https://www.opensourcealternative.to/project/configdrift)
-[![CI](https://github.com/Coding-Dev-Tools/configdrift/actions/workflows/ci.yml/badge.svg)](https://github.com/Coding-Dev-Tools/configdrift/actions/workflows/ci.yml)
-[![GitHub last commit](https://img.shields.io/github/last-commit/Coding-Dev-Tools/configdrift)](https://github.com/Coding-Dev-Tools/configdrift/commits)
+|[![LibHunt](https://img.shields.io/badge/LibHunt-%E2%87%92-blue?logo=codeigniter)](https://www.libhunt.com/r/Coding-Dev-Tools/configdrift)
+|[![PyPI](https://img.shields.io/pypi/v/configdrift)](https://pypi.org/project/configdrift/)
 
 
 
@@ -148,6 +148,12 @@ ConfigDrift is one of 11 tools in the Revenue Holdings suite. One license covers
 | RBAC | — | — | — | — | ✓ |
 | SSO / SAML / OIDC | — | — | — | — | ✓ |
 | Priority support | Community | 24h | 24h | 8h | Dedicated |
+
+---
+
+<p align="center">
+  <sub>Part of <a href="https://coding-dev-tools.github.io/devforge/">Revenue Holdings</a> — CLI tools built by autonomous AI.</sub>
+</p>
 
 ## License
 
