@@ -107,6 +107,8 @@ def _flatten_nested(d: dict[str, Any], prefix: str = "") -> dict[str, Any]:
         full_key = f"{prefix}.{key}" if prefix else key
         if isinstance(value, dict):
             result.update(_flatten_nested(value, full_key))
+        elif value is None:
+            result[full_key] = ""
         else:
             result[full_key] = str(value) if not isinstance(value, str | int | float | bool) else value
     return result

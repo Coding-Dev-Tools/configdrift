@@ -56,19 +56,25 @@ class OutputFormat(str, Enum):
     SILENT = "silent"
 
 
+# Module-level defaults to avoid B008 (function calls in argument defaults)
+_DEFAULT_BASELINE = "dev"
+_DEFAULT_TARGET = "target"
+_DEFAULT_OUTPUT: OutputFormat = OutputFormat.TABLE
+_DEFAULT_STRICT = False
+_FILES_ARG = typer.Argument(..., help="Config files to compare (2+ files; first file is baseline).")
+_BASELINE_OPT = typer.Option(_DEFAULT_BASELINE, "--baseline", "-b", help="Baseline environment label (default: 'dev').")
+_TARGET_OPT = typer.Option(_DEFAULT_TARGET, "--target", "-t", help="Target environment label (default: 'target').")
+_OUTPUT_OPT = typer.Option(_DEFAULT_OUTPUT, "--output", "-o", help="Output format: table, json, or silent (exit code only).")
+_STRICT_OPT = typer.Option(_DEFAULT_STRICT, "--strict", help="Exit 1 on ANY drift, not just breaking changes.")
+
+
 @app.command()
 def check(
-    files: list[str] = typer.Argument(..., help="Config files to compare (2+ files; first file is baseline)."),  # noqa: B008
-    baseline: str = typer.Option(
-        "dev", "--baseline", "-b",
-        help="Baseline environment label (default: 'dev').",
-    ),  # noqa: B008
-    target: str = typer.Option("target", "--target", "-t", help="Target environment label (default: 'target')."),  # noqa: B008
-    output: OutputFormat = typer.Option(
-            OutputFormat.TABLE, "--output", "-o",
-            help="Output format: table, json, or silent (exit code only).",
-        ),  # noqa: B008
-    strict: bool = typer.Option(False, "--strict", help="Exit 1 on ANY drift, not just breaking changes."),  # noqa: B008
+    files: list[str] = _FILES_ARG,
+    baseline: str = _BASELINE_OPT,
+    target: str = _TARGET_OPT,
+    output: OutputFormat = _OUTPUT_OPT,
+    strict: bool = _STRICT_OPT,
 ):
     """Compare 2+ config files and report drift. Exits 1 if breaking drift found (useful for CI gating)."""
     if len(files) < 2:
