@@ -9,7 +9,7 @@ description = "CLI tool that detects and fixes configuration file drift across e
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
-authors = [{name = "Revenue Holdings"}]
+authors = [{name = "DevForge"}]
 keywords = ["config", "drift", "diff", "env", "devops", "cli"]
 classifiers = [
     "Development Status :: 4 - Beta",
