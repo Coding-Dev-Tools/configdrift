@@ -49,7 +49,7 @@ def _version_callback(value: bool) -> None:
 
 @app.callback()
 def main(
-    version: bool = typer.Option(
+    version: bool = typer.Option(  # noqa: B008
         False,
         "--version",
         "-V",
@@ -57,7 +57,7 @@ def main(
         callback=_version_callback,
         is_eager=True,
     ),
-    require_license_flag: bool = typer.Option(
+    require_license_flag: bool = typer.Option(  # noqa: B008
         False,
         "--require-license",
         help=(
@@ -243,18 +243,18 @@ def scan(
         None,
         help="Directories containing config files. Each dir is treated as an environment.",
     ),
-    baseline: str = typer.Option(
+    baseline: str = typer.Option(  # noqa: B008
         "dev", "--baseline", "-b", help="Baseline directory name for comparison."
-    ),  # noqa: B008
-    config: str | None = typer.Option(
+    ),
+    config: str | None = typer.Option(  # noqa: B008
         None, "--config", "-c", help="Path to .configdrift.yaml config file."
-    ),  # noqa: B008
-    output: OutputFormat = typer.Option(
+    ),
+    output: OutputFormat = typer.Option(  # noqa: B008
         OutputFormat.TABLE, "--output", "-o", help="Output format."
-    ),  # noqa: B008
-    strict: bool = typer.Option(
+    ),
+    strict: bool = typer.Option(  # noqa: B008
         False, "--strict", help="Exit 1 on ANY drift, not just breaking changes."
-    ),  # noqa: B008
+    ),
 ):
     """Scan directories of config files and compare environments."""
     if config:
@@ -322,7 +322,7 @@ def scan(
 
 @app.command()
 def init(
-    path: str = typer.Argument(".", help="Directory to create .configdrift.yaml in."),
+    path: str = typer.Argument(".", help="Directory to create .configdrift.yaml in."),  # noqa: B008
 ):
     """Generate a .configdrift.yaml configuration file."""
     template = """# ConfigDrift configuration
