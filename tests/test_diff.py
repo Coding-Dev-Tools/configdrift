@@ -22,12 +22,20 @@ class TestChangeDataclass:
         assert "443" in str(c)
 
     def test_change_str_removed(self):
-        c = Change(key="host", change_type=ChangeType.REMOVED, old_value="localhost", env="dev")
+        c = Change(
+            key="host", change_type=ChangeType.REMOVED, old_value="localhost", env="dev"
+        )
         assert "[-]" in str(c)
         assert "host" in str(c)
 
     def test_change_str_changed(self):
-        c = Change(key="host", change_type=ChangeType.CHANGED, old_value="dev", new_value="prod", env="prod")
+        c = Change(
+            key="host",
+            change_type=ChangeType.CHANGED,
+            old_value="dev",
+            new_value="prod",
+            env="prod",
+        )
         assert "[~]" in str(c)
         assert "dev" in str(c)
         assert "prod" in str(c)
@@ -40,29 +48,45 @@ class TestDiffResult:
         assert r.count == 0
 
     def test_result_with_breaking(self):
-        r = DiffResult(changes=[
-            Change(key="auth", change_type=ChangeType.CHANGED, severity=Severity.BREAKING),
-            Change(key="port", change_type=ChangeType.CHANGED, severity=Severity.INFO),
-        ])
+        r = DiffResult(
+            changes=[
+                Change(
+                    key="auth",
+                    change_type=ChangeType.CHANGED,
+                    severity=Severity.BREAKING,
+                ),
+                Change(
+                    key="port", change_type=ChangeType.CHANGED, severity=Severity.INFO
+                ),
+            ]
+        )
         assert r.has_breaking is True
         assert r.count == 2
 
     def test_by_type(self):
-        r = DiffResult(changes=[
-            Change(key="a", change_type=ChangeType.ADDED),
-            Change(key="b", change_type=ChangeType.REMOVED),
-            Change(key="c", change_type=ChangeType.ADDED),
-        ])
+        r = DiffResult(
+            changes=[
+                Change(key="a", change_type=ChangeType.ADDED),
+                Change(key="b", change_type=ChangeType.REMOVED),
+                Change(key="c", change_type=ChangeType.ADDED),
+            ]
+        )
         added = r.by_type(ChangeType.ADDED)
         assert len(added) == 2
         assert all(c.change_type == ChangeType.ADDED for c in added)
 
     def test_by_severity(self):
-        r = DiffResult(changes=[
-            Change(key="a", change_type=ChangeType.CHANGED, severity=Severity.BREAKING),
-            Change(key="b", change_type=ChangeType.CHANGED, severity=Severity.INFO),
-            Change(key="c", change_type=ChangeType.ADDED, severity=Severity.WARNING),
-        ])
+        r = DiffResult(
+            changes=[
+                Change(
+                    key="a", change_type=ChangeType.CHANGED, severity=Severity.BREAKING
+                ),
+                Change(key="b", change_type=ChangeType.CHANGED, severity=Severity.INFO),
+                Change(
+                    key="c", change_type=ChangeType.ADDED, severity=Severity.WARNING
+                ),
+            ]
+        )
         breaking = r.by_severity(Severity.BREAKING)
         assert len(breaking) == 1
         assert breaking[0].key == "a"
