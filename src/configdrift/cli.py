@@ -1,8 +1,15 @@
 """ConfigDrift CLI entry point."""
 
+from __future__ import annotations
+
 import os
+from enum import Enum
+from pathlib import Path
+from typing import Any
 
 import typer
+from rich.console import Console
+from rich.table import Table
 
 try:
     from revenueholdings_license import require_license
@@ -23,11 +30,6 @@ from configdrift.diff import (
     diff_environments,
 )
 from configdrift.loader import load_file
-from enum import Enum
-from pathlib import Path
-from rich.console import Console
-from rich.table import Table
-from typing import Any
 
 app = typer.Typer(
     name="configdrift",
@@ -178,7 +180,7 @@ def _output_table(results: dict[str, Any], baseline_env: str) -> None:
         if not diff_result.changes:
             continue
 
-        table = Table(title=f"Config Drift: {baseline_env} \u2192 {env_name}")
+        table = Table(title=f"Config Drift: {baseline_env} → {env_name}")
         table.add_column("Key", style="cyan")
         table.add_column("Change", style="bold")
         table.add_column("Old Value", style="yellow")
@@ -209,7 +211,7 @@ def _output_table(results: dict[str, Any], baseline_env: str) -> None:
         console.print(table)
         console.print(f"Total changes: {diff_result.count}")
         if diff_result.has_breaking:
-            console.print("[red]\u26a0 BREAKING CHANGES DETECTED[/red]")
+            console.print("[red]⚠ BREAKING CHANGES DETECTED[/red]")
         console.print()
 
 
