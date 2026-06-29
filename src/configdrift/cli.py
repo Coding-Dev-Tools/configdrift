@@ -1,6 +1,14 @@
 """ConfigDrift CLI entry point."""
 
+from __future__ import annotations
+
+import os
 import typer
+from enum import Enum
+from pathlib import Path
+from rich.console import Console
+from rich.table import Table
+from typing import Any
 
 try:
     from revenueholdings_license import require_license
@@ -21,11 +29,6 @@ from configdrift.diff import (
     diff_environments,
 )
 from configdrift.loader import load_file
-from enum import Enum
-from pathlib import Path
-from rich.console import Console
-from rich.table import Table
-from typing import Any
 
 app = typer.Typer(
     name="configdrift",
@@ -33,6 +36,8 @@ app = typer.Typer(
     invoke_without_command=True,
 )
 console = Console()
+
+_require_license_strict: bool = False
 
 
 def _version_callback(value: bool) -> None:
@@ -43,7 +48,7 @@ def _version_callback(value: bool) -> None:
 
 @app.callback()
 def main(
-    version: bool = typer.Option(
+    version: bool = typer.Option(  # noqa: B008
         False,
         "--version",
         "-V",
@@ -51,8 +56,34 @@ def main(
         callback=_version_callback,
         is_eager=True,
     ),
+    require_license_flag: bool = typer.Option(  # noqa: B008
+        False,
+        "--require-license",
+        help=(
+            "Exit with an error if revenueholdings-license is not installed "
+            "or if the license check fails. "
+            "Also enabled via REVENUEHOLDINGS_REQUIRE_LICENSE=1."
+        ),
+    ),
 ) -> None:
     """ConfigDrift CLI — detect and fix configuration drift."""
+    global _require_license_strict
+    _require_license_strict = require_license_flag or bool(
+        os.environ.get("REVENUEHOLDINGS_REQUIRE_LICENSE")
+    )
+    if _require_license_strict:
+        try:
+            from revenueholdings_license import require_license as _rl
+            _rl("configdrift")
+        except ImportError:
+            console.print(
+                "[bold red]Error:[/bold red] revenueholdings-license is not installed. "
+                "Install it with: pip install revenueholdings-license",
+                err=True,
+            )
+            raise typer.Exit(code=1) from None
+        except Exception:
+            raise
 
 
 class OutputFormat(str, Enum):
@@ -211,22 +242,22 @@ def scan(
         None,
         help="Directories containing config files. Each dir is treated as an environment.",
     ),
-    baseline: str = typer.Option(
+    baseline: str = typer.Option(  # noqa: B008
         "dev", "--baseline", "-b", help="Baseline directory name for comparison."
-    ),  # noqa: B008
-    config: str | None = typer.Option(
+    ),
+    config: str | None = typer.Option(  # noqa: B008
         None, "--config", "-c", help="Path to .configdrift.yaml config file."
-    ),  # noqa: B008
-    output: OutputFormat = typer.Option(
+    ),
+    output: OutputFormat = typer.Option(  # noqa: B008
         OutputFormat.TABLE, "--output", "-o", help="Output format."
-    ),  # noqa: B008
-    strict: bool = typer.Option(
+    ),
+    strict: bool = typer.Option(  # noqa: B008
         False, "--strict", help="Exit 1 on ANY drift, not just breaking changes."
-    ),  # noqa: B008
+    ),
 ):
     """Scan directories of config files and compare environments."""
     if config:
-        # Load config file for directory → env mapping (raw, not flattened)
+        # Load config file for directory -> env mapping (raw, not flattened)
         import yaml as _yaml
 
         with open(config, encoding="utf-8") as _f:
@@ -290,7 +321,7 @@ def scan(
 
 @app.command()
 def init(
-    path: str = typer.Argument(".", help="Directory to create .configdrift.yaml in."),
+    path: str = typer.Argument(".", help="Directory to create .configdrift.yaml in."),  # noqa: B008
 ):
     """Generate a .configdrift.yaml configuration file."""
     template = """# ConfigDrift configuration
