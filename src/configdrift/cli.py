@@ -1,5 +1,7 @@
 """ConfigDrift CLI entry point."""
 
+import os
+
 import typer
 
 try:
@@ -34,6 +36,8 @@ app = typer.Typer(
 )
 console = Console()
 
+_require_license_strict: bool = False
+
 
 def _version_callback(value: bool) -> None:
     if value:
@@ -51,8 +55,34 @@ def main(
         callback=_version_callback,
         is_eager=True,
     ),
+    require_license_flag: bool = typer.Option(
+        False,
+        "--require-license",
+        help=(
+            "Exit with an error if revenueholdings-license is not installed "
+            "or if the license check fails. "
+            "Also enabled via REVENUEHOLDINGS_REQUIRE_LICENSE=1."
+        ),
+    ),
 ) -> None:
     """ConfigDrift CLI — detect and fix configuration drift."""
+    global _require_license_strict
+    _require_license_strict = require_license_flag or bool(
+        os.environ.get("REVENUEHOLDINGS_REQUIRE_LICENSE")
+    )
+    if _require_license_strict:
+        try:
+            from revenueholdings_license import require_license as _rl
+            _rl("configdrift")
+        except ImportError:
+            console.print(
+                "[bold red]Error:[/bold red] revenueholdings-license is not installed. "
+                "Install it with: pip install revenueholdings-license",
+                err=True,
+            )
+            raise typer.Exit(code=1) from None
+        except Exception:
+            raise
 
 
 class OutputFormat(str, Enum):
@@ -148,7 +178,7 @@ def _output_table(results: dict[str, Any], baseline_env: str) -> None:
         if not diff_result.changes:
             continue
 
-        table = Table(title=f"Config Drift: {baseline_env} → {env_name}")
+        table = Table(title=f"Config Drift: {baseline_env} \u2192 {env_name}")
         table.add_column("Key", style="cyan")
         table.add_column("Change", style="bold")
         table.add_column("Old Value", style="yellow")
@@ -179,7 +209,7 @@ def _output_table(results: dict[str, Any], baseline_env: str) -> None:
         console.print(table)
         console.print(f"Total changes: {diff_result.count}")
         if diff_result.has_breaking:
-            console.print("[red]⚠ BREAKING CHANGES DETECTED[/red]")
+            console.print("[red]\u26a0 BREAKING CHANGES DETECTED[/red]")
         console.print()
 
 
@@ -226,7 +256,7 @@ def scan(
 ):
     """Scan directories of config files and compare environments."""
     if config:
-        # Load config file for directory → env mapping (raw, not flattened)
+        # Load config file for directory -> env mapping (raw, not flattened)
         import yaml as _yaml
 
         with open(config, encoding="utf-8") as _f:
