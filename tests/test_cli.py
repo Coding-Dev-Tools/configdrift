@@ -32,7 +32,9 @@ class TestCheckCommand:
             dev.write_text(json.dumps({"host": "localhost"}))
             prod.write_text(json.dumps({"host": "prod.example.com", "port": 443}))
 
-            result = runner.invoke(app, ["check", str(dev), str(prod), "--output", "json"])
+            result = runner.invoke(
+                app, ["check", str(dev), str(prod), "--output", "json"]
+            )
             assert result.exit_code == 0
             data = json.loads(result.stdout)
             assert "target" in data
@@ -90,7 +92,6 @@ class TestCheckCommand:
             assert result.exit_code == 1
             assert "Provide at least 2 config files" in result.stdout
 
-
     def test_check_with_custom_labels(self):
         """Custom --baseline and --target labels should appear in output."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -99,10 +100,18 @@ class TestCheckCommand:
             dev.write_text(yaml.dump({"host": "localhost"}))
             prod.write_text(yaml.dump({"host": "prod.example.com", "port": 443}))
 
-            result = runner.invoke(app, [
-                "check", str(dev), str(prod),
-                "--baseline", "staging", "--target", "production",
-            ])
+            result = runner.invoke(
+                app,
+                [
+                    "check",
+                    str(dev),
+                    str(prod),
+                    "--baseline",
+                    "staging",
+                    "--target",
+                    "production",
+                ],
+            )
             assert result.exit_code == 0
             assert "staging" in result.stdout or "production" in result.stdout
             assert "host" in result.stdout
@@ -117,7 +126,9 @@ class TestScanCommand:
             dev_dir.mkdir()
             prod_dir.mkdir()
             (dev_dir / "config.yaml").write_text(yaml.dump({"host": "localhost"}))
-            (prod_dir / "config.yaml").write_text(yaml.dump({"host": "prod.example.com"}))
+            (prod_dir / "config.yaml").write_text(
+                yaml.dump({"host": "prod.example.com"})
+            )
 
             result = runner.invoke(app, ["scan", str(dev_dir), str(prod_dir)])
             assert result.exit_code == 0
@@ -134,12 +145,16 @@ class TestScanCommand:
             (dev_dir / "app.yaml").write_text(yaml.dump({"host": "localhost"}))
             (prod_dir / "app.yaml").write_text(yaml.dump({"host": "prod.example.com"}))
 
-            cfg.write_text(yaml.dump({
-                "environments": {
-                    "dev": str(dev_dir),
-                    "prod": str(prod_dir),
-                }
-            }))
+            cfg.write_text(
+                yaml.dump(
+                    {
+                        "environments": {
+                            "dev": str(dev_dir),
+                            "prod": str(prod_dir),
+                        }
+                    }
+                )
+            )
 
             result = runner.invoke(app, ["scan", "--config", str(cfg)])
             assert result.exit_code == 0
@@ -151,7 +166,9 @@ class TestScanCommand:
             dev_dir = Path(tmpdir) / "dev"
             dev_dir.mkdir()
             (dev_dir / "c.yaml").write_text(yaml.dump({"k": "v"}))
-            result = runner.invoke(app, ["scan", str(dev_dir), "--baseline", "nonexistent"])
+            result = runner.invoke(
+                app, ["scan", str(dev_dir), "--baseline", "nonexistent"]
+            )
             assert result.exit_code == 1
             assert "not found" in result.stdout
 
@@ -165,11 +182,12 @@ class TestScanCommand:
             (dev_dir / "c.yaml").write_text(yaml.dump({"host": "localhost"}))
             (prod_dir / "c.yaml").write_text(yaml.dump({"host": "prod.example.com"}))
 
-            result = runner.invoke(app, ["scan", str(dev_dir), str(prod_dir), "--output", "json"])
+            result = runner.invoke(
+                app, ["scan", str(dev_dir), str(prod_dir), "--output", "json"]
+            )
             assert result.exit_code == 0
             data = json.loads(result.stdout)
             assert "prod" in data
-
 
     def test_scan_nonexistent_dir_warning(self):
         """Scan with a non-directory path should warn and skip."""
@@ -205,8 +223,12 @@ class TestScanCommand:
             prod_dir = Path(tmpdir) / "prod"
             dev_dir.mkdir()
             prod_dir.mkdir()
-            (dev_dir / "c.yaml").write_text(yaml.dump({"database_url": "postgres://dev"}))
-            (prod_dir / "c.yaml").write_text(yaml.dump({"database_url": "postgres://prod"}))
+            (dev_dir / "c.yaml").write_text(
+                yaml.dump({"database_url": "postgres://dev"})
+            )
+            (prod_dir / "c.yaml").write_text(
+                yaml.dump({"database_url": "postgres://prod"})
+            )
 
             result = runner.invoke(app, ["scan", str(dev_dir), str(prod_dir)])
             assert result.exit_code == 1
@@ -233,7 +255,9 @@ class TestScanCommand:
             assert result.exit_code == 0
 
             # With --strict, any drift exits 1
-            result = runner.invoke(app, ["scan", str(dev_dir), str(prod_dir), "--strict"])
+            result = runner.invoke(
+                app, ["scan", str(dev_dir), str(prod_dir), "--strict"]
+            )
             assert result.exit_code == 1
 
     def test_scan_strict_no_drift_exits_zero(self):
@@ -246,7 +270,9 @@ class TestScanCommand:
             (dev_dir / "c.yaml").write_text(yaml.dump({"host": "localhost"}))
             (prod_dir / "c.yaml").write_text(yaml.dump({"host": "localhost"}))
 
-            result = runner.invoke(app, ["scan", str(dev_dir), str(prod_dir), "--strict"])
+            result = runner.invoke(
+                app, ["scan", str(dev_dir), str(prod_dir), "--strict"]
+            )
             assert result.exit_code == 0
 
     def test_scan_silent_breaking_drift(self):
@@ -256,10 +282,16 @@ class TestScanCommand:
             prod_dir = Path(tmpdir) / "prod"
             dev_dir.mkdir()
             prod_dir.mkdir()
-            (dev_dir / "c.yaml").write_text(yaml.dump({"database_url": "postgres://dev"}))
-            (prod_dir / "c.yaml").write_text(yaml.dump({"database_url": "postgres://prod"}))
+            (dev_dir / "c.yaml").write_text(
+                yaml.dump({"database_url": "postgres://dev"})
+            )
+            (prod_dir / "c.yaml").write_text(
+                yaml.dump({"database_url": "postgres://prod"})
+            )
 
-            result = runner.invoke(app, ["scan", str(dev_dir), str(prod_dir), "--output", "silent"])
+            result = runner.invoke(
+                app, ["scan", str(dev_dir), str(prod_dir), "--output", "silent"]
+            )
             assert result.exit_code == 1
 
 
@@ -279,7 +311,6 @@ class TestInitCommand:
             result = runner.invoke(app, ["init", tmpdir])
             assert result.exit_code == 1
             assert "already exists" in result.stdout
-
 
     def test_check_toml_files(self):
         """Check command should work with TOML files."""
@@ -329,7 +360,9 @@ class TestInitCommand:
             a.write_text(yaml.dump({"host": "localhost"}))
             b.write_text(yaml.dump({"host": "staging.example.com"}))
 
-            result = runner.invoke(app, ["check", str(a), str(b), "--output", "silent", "--strict"])
+            result = runner.invoke(
+                app, ["check", str(a), str(b), "--output", "silent", "--strict"]
+            )
             assert result.exit_code == 1
 
     def test_check_strict_no_drift_exits_zero(self):
@@ -365,7 +398,9 @@ class TestInitCommand:
             (dev_dir / "app.env").write_text("HOST=localhost\n")
             (prod_dir / "app.env").write_text("HOST=prod.example.com\n")
 
-            result = runner.invoke(app, ["scan", str(dev_dir), str(prod_dir), "--output", "json"])
+            result = runner.invoke(
+                app, ["scan", str(dev_dir), str(prod_dir), "--output", "json"]
+            )
             assert result.exit_code == 0
             data = json.loads(result.stdout)
             assert "prod" in data
@@ -378,12 +413,20 @@ class TestInitCommand:
             prod_dir = Path(tmpdir) / "prod"
             for d in [dev_dir, staging_dir, prod_dir]:
                 d.mkdir()
-            (dev_dir / "c.yaml").write_text(yaml.dump({"host": "localhost", "port": 8080}))
+            (dev_dir / "c.yaml").write_text(
+                yaml.dump({"host": "localhost", "port": 8080})
+            )
             # staging is identical to dev — no changes
-            (staging_dir / "c.yaml").write_text(yaml.dump({"host": "localhost", "port": 8080}))
-            (prod_dir / "c.yaml").write_text(yaml.dump({"host": "prod.example.com", "port": 8080}))
+            (staging_dir / "c.yaml").write_text(
+                yaml.dump({"host": "localhost", "port": 8080})
+            )
+            (prod_dir / "c.yaml").write_text(
+                yaml.dump({"host": "prod.example.com", "port": 8080})
+            )
 
-            result = runner.invoke(app, ["scan", str(dev_dir), str(staging_dir), str(prod_dir)])
+            result = runner.invoke(
+                app, ["scan", str(dev_dir), str(staging_dir), str(prod_dir)]
+            )
             assert result.exit_code == 0
             # Should show prod drift but skip staging (no changes)
             assert "prod" in result.stdout
