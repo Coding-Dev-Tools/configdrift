@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import os
+import typer
 from enum import Enum
 from pathlib import Path
-from typing import Any
-
-import typer
 from rich.console import Console
 from rich.table import Table
+from typing import Any
 
 try:
     from revenueholdings_license import require_license
