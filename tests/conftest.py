@@ -1,4 +1,5 @@
 """Mock revenueholdings_license for tests so CLI commands don't hit the paywall."""
+
 import sys
 from unittest.mock import MagicMock
 
