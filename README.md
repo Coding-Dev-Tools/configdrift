@@ -92,6 +92,22 @@ Use `--output silent` for CI gating:
 configdrift check dev.yaml prod.yaml --output silent || echo "Drift detected!"
 ```
 
+### GitHub Actions example
+
+```yaml
+- name: Detect config drift
+  run: |
+    pip install configdrift
+    configdrift check ./config/staging/app.yaml ./config/prod/app.yaml --output silent
+```
+
+## Troubleshooting
+
+- **Exit code 1 with no output**: use `--output table` to inspect drift details.
+- **TOML parsing errors on Python < 3.11**: install `tomli` and `tomli-w` or use Python 3.11+.
+- **Large config scans are slow**: narrow the scan to changed files or a single directory.
+- **Unexpected breaking drift**: review severity rules in the project settings; `database*` and `auth*` keys are flagged as breaking by default.
+
 ## Supported Formats
 
 | Format  | Extension      | Notes                         |
