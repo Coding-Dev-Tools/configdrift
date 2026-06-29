@@ -54,8 +54,12 @@ class DiffResult:
         return [c for c in self.changes if c.severity == severity]
 
 
-def diff_configs(base: dict[str, Any], target: dict[str, Any],
-                 base_env: str = "base", target_env: str = "target") -> DiffResult:
+def diff_configs(
+    base: dict[str, Any],
+    target: dict[str, Any],
+    base_env: str = "base",
+    target_env: str = "target",
+) -> DiffResult:
     """Compare two flat config dictionaries and return the diff."""
     result = DiffResult()
     all_keys = set(base.keys()) | set(target.keys())
@@ -65,36 +69,43 @@ def diff_configs(base: dict[str, Any], target: dict[str, Any],
         new_val = target.get(key)
 
         if key not in base:
-            result.changes.append(Change(
-                key=key,
-                change_type=ChangeType.ADDED,
-                new_value=new_val,
-                severity=_infer_severity_added(key, new_val),
-                env=target_env,
-            ))
+            result.changes.append(
+                Change(
+                    key=key,
+                    change_type=ChangeType.ADDED,
+                    new_value=new_val,
+                    severity=_infer_severity_added(key, new_val),
+                    env=target_env,
+                )
+            )
         elif key not in target:
-            result.changes.append(Change(
-                key=key,
-                change_type=ChangeType.REMOVED,
-                old_value=old_val,
-                severity=_infer_severity_removed(key, old_val),
-                env=base_env,
-            ))
+            result.changes.append(
+                Change(
+                    key=key,
+                    change_type=ChangeType.REMOVED,
+                    old_value=old_val,
+                    severity=_infer_severity_removed(key, old_val),
+                    env=base_env,
+                )
+            )
         elif old_val != new_val:
-            result.changes.append(Change(
-                key=key,
-                change_type=ChangeType.CHANGED,
-                old_value=old_val,
-                new_value=new_val,
-                severity=_infer_severity_changed(key, old_val, new_val),
-                env=target_env,
-            ))
+            result.changes.append(
+                Change(
+                    key=key,
+                    change_type=ChangeType.CHANGED,
+                    old_value=old_val,
+                    new_value=new_val,
+                    severity=_infer_severity_changed(key, old_val, new_val),
+                    env=target_env,
+                )
+            )
 
     return result
 
 
-def diff_environments(env_configs: dict[str, dict[str, Any]],
-                      baseline_env: str = "dev") -> dict[str, DiffResult]:
+def diff_environments(
+    env_configs: dict[str, dict[str, Any]], baseline_env: str = "dev"
+) -> dict[str, DiffResult]:
     """Compare multiple environments against a baseline."""
     if baseline_env not in env_configs:
         raise ValueError(f"Baseline environment '{baseline_env}' not found in configs")
@@ -109,7 +120,13 @@ def diff_environments(env_configs: dict[str, dict[str, Any]],
 
 
 _CRITICAL_PREFIXES = (
-    "database", "auth", "api_key", "secret", "password", "token", "endpoint",
+    "database",
+    "auth",
+    "api_key",
+    "secret",
+    "password",
+    "token",
+    "endpoint",
 )
 
 
