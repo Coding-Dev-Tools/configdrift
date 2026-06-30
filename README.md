@@ -174,3 +174,9 @@ ConfigDrift is one of 11 tools in the Revenue Holdings suite. One license covers
 ## License
 
 MIT
+
+## Test
+
+```bash
+npm test  # runs: node --test tests/
+```
