@@ -71,4 +71,5 @@ Thumbs.db
 research/
 fixtures/generated/
 .ruff_cache/
+node_modules/
 nul  

@@ -6,7 +6,7 @@ export default [
   {
     languageOptions: {
       ecmaVersion: 2023,
-      sourceType: "commonjs",
+      sourceType: "module",
       globals: { ...globals.node },
     },
     rules: {
