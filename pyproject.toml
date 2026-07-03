@@ -36,7 +36,7 @@ dev = [
     "ruff>=0.4.0",
 ]
 toml = ["tomli>=2.0.0", "tomli-w>=1.0.0"]
-license = ["revenueholdings-license>=0.1.0"]
+license-check = ["revenueholdings-license>=0.1.0"]
 
 [project.urls]
 Homepage = "https://github.com/Coding-Dev-Tools/configdrift"
