@@ -154,7 +154,7 @@ class TestLoadDotenv:
     def test_dotenv_quoted_values(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             p = Path(tmpdir) / ".env"
-            p.write_text('KEY="quoted value"\nSINGLE=\'single quoted\'\n')
+            p.write_text("KEY=\"quoted value\"\nSINGLE='single quoted'\n")
             result = load_file(str(p))
             assert result["KEY"] == "quoted value"
             assert result["SINGLE"] == "single quoted"
@@ -178,7 +178,9 @@ class TestLoadDotenv:
         """Lines with 'export ' prefix should be parsed correctly."""
         with tempfile.TemporaryDirectory() as tmpdir:
             p = Path(tmpdir) / ".env"
-            p.write_text("export DATABASE_URL=postgres://localhost\nexport API_KEY=secret123\n")
+            p.write_text(
+                "export DATABASE_URL=postgres://localhost\nexport API_KEY=secret123\n"
+            )
             result = load_file(str(p))
             assert result["DATABASE_URL"] == "postgres://localhost"
             assert result["API_KEY"] == "secret123"
@@ -231,7 +233,6 @@ class TestLoadFileUnsupported:
     def test_nonexistent_file_raises(self):
         with pytest.raises((FileNotFoundError, OSError)):
             load_file("/nonexistent/path/config.yaml")
-
 
     def test_dotenv_single_quoted_hash_inside(self):
         """# inside single quotes should be preserved in the value."""

@@ -1,4 +1,5 @@
 """Targeted coverage tests for uncovered lines in loader.py and cli.py."""
+
 import pytest
 import tempfile
 import yaml
@@ -18,12 +19,16 @@ class TestStripInlineCommentToggles:
         # A value with a " inside it, followed by # outside quotes
         # The " should be detected as the start/end of double-quoting
         result = _strip_inline_comment('prefix "hello" # comment')
-        assert result == 'prefix "hello"', f"Expected comment stripped after quoted section, got: {result!r}"
+        assert result == 'prefix "hello"', (
+            f"Expected comment stripped after quoted section, got: {result!r}"
+        )
 
     def test_single_quote_toggle_with_hash(self):
         """Line 74: in_single should toggle when encountering ' outside double quotes."""
         result = _strip_inline_comment("prefix 'hello' # comment")
-        assert result == "prefix 'hello'", f"Expected comment stripped after quoted section, got: {result!r}"
+        assert result == "prefix 'hello'", (
+            f"Expected comment stripped after quoted section, got: {result!r}"
+        )
 
 
 class TestLoadDotenvQuoteStrip:
@@ -54,7 +59,7 @@ class TestLoaderLine3132:
         with tempfile.TemporaryDirectory() as tmpdir:
             p = Path(tmpdir) / "config.bin"
             # Binary bytes that can't be decoded as UTF-8
-            p.write_bytes(b'\xff\xfe\x00\x00hello')
+            p.write_bytes(b"\xff\xfe\x00\x00hello")
             with pytest.raises(ValueError, match="Unsupported file format: .bin"):
                 load_file(str(p))
 
@@ -73,5 +78,8 @@ class TestCliLine206:
             (dev_dir / "c.yaml").write_text(yaml.dump({"host": "localhost"}))
             (prod_dir / "c.yaml").write_text(yaml.dump({"host": "prod.example.com"}))
 
-            result = runner.invoke(app, ["scan", str(dev_dir), str(prod_dir), "--output", "silent", "--strict"])
+            result = runner.invoke(
+                app,
+                ["scan", str(dev_dir), str(prod_dir), "--output", "silent", "--strict"],
+            )
             assert result.exit_code == 1

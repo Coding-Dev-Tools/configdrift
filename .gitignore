@@ -5,7 +5,6 @@ __pycache__/
 
 # C extensions
 *.so
-
 # Distribution / packaging
 .Python
 build/
@@ -22,15 +21,12 @@ var/
 wheels/
 *.egg-info/
 *.egg
-
 # PyInstaller
 *.manifest
 *.spec
-
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
-
 # Unit test / coverage
 htmlcov/
 .tox/
@@ -44,31 +40,27 @@ coverage.xml
 *.py,cover
 .hypothesis/
 .pytest_cache/
-
 # Translations
 *.mo
 *.pot
-
 # Environments
 .env
 .venv
 env/
 venv/
 ENV/
-
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
-
 # OS
 .DS_Store
 Thumbs.db
-
 # Project specific
 research/
 fixtures/generated/
 .ruff_cache/
-build/
+node_modules/
+nul  
