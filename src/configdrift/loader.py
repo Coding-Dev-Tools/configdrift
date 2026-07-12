@@ -1,9 +1,14 @@
 """Configuration loaders for YAML, JSON, TOML, and .env formats."""
 
+import importlib
 import json
 import re
 from pathlib import Path
 from typing import Any
+
+_toml = importlib.import_module(
+    "tomllib" if __import__("sys").version_info >= (3, 11) else "tomli"
+)
 
 
 def load_file(path: str) -> dict[str, Any]:
@@ -34,10 +39,13 @@ def load_file(path: str) -> dict[str, Any]:
 
 def _load_yaml(path: Path) -> dict[str, Any]:
     import yaml
+
     with open(path, encoding="utf-8") as f:
         data = yaml.safe_load(f)
     if not isinstance(data, dict):
-        raise ValueError(f"YAML file must contain a mapping (dict), got {type(data).__name__}")
+        raise ValueError(
+            f"YAML file must contain a mapping (dict), got {type(data).__name__}"
+        )
     return _flatten_nested(data)
 
 
@@ -45,18 +53,16 @@ def _load_json(path: Path) -> dict[str, Any]:
     with open(path, encoding="utf-8") as f:
         data = json.load(f)
     if not isinstance(data, dict):
-        raise ValueError(f"JSON file must contain a mapping (dict), got {type(data).__name__}")
+        raise ValueError(
+            f"JSON file must contain a mapping (dict), got {type(data).__name__}"
+        )
     return _flatten_nested(data)
 
 
 def _load_toml(path: Path) -> dict[str, Any]:
-    try:
-        import tomllib  # Python 3.11+
-    except ImportError:
-        import tomli as tomllib  # Python 3.10
     with open(path, "rb") as f:
-        data = tomllib.load(f)
-    return _flatten_nested(data)
+        data = _toml.load(f)
+        return _flatten_nested(data)
 
 
 def _strip_inline_comment(value: str) -> str:
@@ -86,9 +92,9 @@ def _load_dotenv(path: Path) -> dict[str, Any]:
             if not line or line.startswith("#"):
                 continue
             # Strip optional 'export ' prefix (shell-style .env files)
-            line = re.sub(r'^export\s+', '', line)
+            line = re.sub(r"^export\s+", "", line)
             # Parse KEY=VALUE or KEY="VALUE" or KEY='VALUE'
-            match = re.match(r'^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$', line)
+            match = re.match(r"^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$", line)
             if match:
                 key = match.group(1)
                 val = match.group(2).strip()
@@ -108,9 +114,10 @@ def _flatten_nested(d: dict[str, Any], prefix: str = "") -> dict[str, Any]:
         full_key = f"{prefix}.{key}" if prefix else key
         if isinstance(value, dict):
             result.update(_flatten_nested(value, full_key))
+        elif value is None:
+            result[full_key] = ""
         else:
-            if value is None:
-                result[full_key] = ""
-            else:
-                result[full_key] = str(value) if not isinstance(value, (str, int, float, bool)) else value
+            result[full_key] = (
+                str(value) if not isinstance(value, str | int | float | bool) else value
+            )
     return result
