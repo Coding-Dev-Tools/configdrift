@@ -11,7 +11,6 @@ Keep configurations consistent across all environments, automatically. ConfigDri
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/Coding-Dev-Tools/configdrift/blob/main/LICENSE)
 [![Open Source Alternative](https://img.shields.io/badge/Open_Source_Alternative-%E2%87%92-blue?logo=opensourceinitiative)](https://www.opensourcealternative.to/project/configdrift)
 |[![LibHunt](https://img.shields.io/badge/LibHunt-%E2%87%92-blue?logo=codeigniter)](https://www.libhunt.com/r/Coding-Dev-Tools/configdrift)
-|[![PyPI](https://img.shields.io/pypi/v/configdrift)](https://pypi.org/project/configdrift/)
 
 
 
@@ -23,7 +22,13 @@ Real-world scenarios:
 
 ## Installation
 
+> ConfigDrift is **not published to public PyPI**. Install from the self-hosted index, a direct GitHub install, or via Homebrew/Scoop (below).
+
 ```bash
+# Self-hosted PEP-503 index (recommended)
+pip install --index-url https://coding-dev-tools.github.io/pypi-index/simple/ configdrift
+
+# Or install directly from GitHub
 pip install git+https://github.com/Coding-Dev-Tools/configdrift.git
 ```
 
@@ -97,7 +102,7 @@ configdrift check dev.yaml prod.yaml --output silent || echo "Drift detected!"
 ```yaml
 - name: Detect config drift
   run: |
-    pip install configdrift
+    pip install --index-url https://coding-dev-tools.github.io/pypi-index/simple/ configdrift
     configdrift check ./config/staging/app.yaml ./config/prod/app.yaml --output silent
 ```
 
