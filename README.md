@@ -25,10 +25,7 @@ Real-world scenarios:
 > ConfigDrift is **not published to public PyPI**. Install from the self-hosted index, a direct GitHub install, or via Homebrew/Scoop (below).
 
 ```bash
-# Self-hosted PEP-503 index (recommended)
-pip install --index-url https://coding-dev-tools.github.io/pypi-index/simple/ configdrift
-
-# Or install directly from GitHub
+# Install directly from GitHub (recommended)
 pip install git+https://github.com/Coding-Dev-Tools/configdrift.git
 ```
 
@@ -102,7 +99,7 @@ configdrift check dev.yaml prod.yaml --output silent || echo "Drift detected!"
 ```yaml
 - name: Detect config drift
   run: |
-    pip install --index-url https://coding-dev-tools.github.io/pypi-index/simple/ configdrift
+    pip install git+https://github.com/Coding-Dev-Tools/configdrift.git
     configdrift check ./config/staging/app.yaml ./config/prod/app.yaml --output silent
 ```
 
