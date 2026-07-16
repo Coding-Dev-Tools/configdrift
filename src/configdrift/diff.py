@@ -1,5 +1,6 @@
 """Diff engine for comparing configuration dictionaries."""
 
+import re
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
@@ -15,6 +16,79 @@ class Severity(Enum):
     INFO = "info"
     WARNING = "warning"
     BREAKING = "breaking"
+
+
+# Pre-compiled regex for camelCase splitting
+_CAMEL_RE = re.compile(r"(?<=[a-z0-9])(?=[A-Z])")
+
+
+def _split_key_into_words(key: str) -> list[str]:
+    """
+    Split a flattened config key into its component words.
+
+    Handles:
+    - dot notation: services.database.password -> [services, database, password]
+    - snake_case: api_key -> [api, key]
+    - kebab-case: api-key -> [api, key]
+    - camelCase: apiKey -> [api, key]
+    - concatenated: apikey -> [api, key] (via critical prefix matching below)
+
+    Returns list of lowercase words.
+    """
+    # First split on common delimiters
+    parts = re.split(r"[._-]+", key)
+
+    words = []
+    for part in parts:
+        # Split camelCase
+        camel_parts = _CAMEL_RE.split(part)
+        words.extend([p.lower() for p in camel_parts if p])
+
+    return words
+
+
+def _key_contains_critical_term(key: str, critical_terms: tuple[str, ...]) -> bool:
+    """
+    Check if a flattened key contains any critical term as a word-boundary match.
+
+    A match occurs when the critical term's word sequence appears as a contiguous
+    subsequence in the key's word sequence. Also handles concatenated forms
+    for MULTI-WORD terms (e.g., 'apikey' matches 'api_key' -> ['api', 'key']).
+    Single-word terms like 'auth', 'secret', 'token' do NOT get concatenated
+    matching to avoid false positives (e.g., 'author' should not match 'auth').
+
+    Examples:
+    - 'services.database.password' with 'database' -> True (word boundary)
+    - 'services.database.password' with 'api_key' -> False
+    - 'author' with 'auth' -> False (author != auth, word boundary prevents false positive)
+    - 'secretary' with 'secret' -> False (secretary != secret)
+    - 'tokenizer' with 'token' -> False (tokenizer != token)
+    - 'apikey' with 'api_key' -> True (concatenated form handled for multi-word terms)
+    """
+    key_words = _split_key_into_words(key)
+
+    for term in critical_terms:
+        term_words = _split_key_into_words(term)
+        term_len = len(term_words)
+
+        if term_len == 0:
+            continue
+
+        # Check for contiguous subsequence match (word boundary)
+        for i in range(len(key_words) - term_len + 1):
+            if key_words[i:i + term_len] == term_words:
+                return True
+
+        # Also check concatenated form for MULTI-WORD terms only.
+        # Single-word terms (auth, secret, token, database, password, endpoint)
+        # would cause false positives like 'author' -> 'auth'.
+        if term_len > 1:
+            concatenated = "".join(term_words)
+            key_normalized = key.lower().replace(".", "").replace("_", "").replace("-", "")
+            if concatenated in key_normalized:
+                return True
+
+    return False
 
 
 @dataclass
@@ -127,23 +201,27 @@ _CRITICAL_PREFIXES = (
     "password",
     "token",
     "endpoint",
+    "auth_token",
+    "secret_key",
+    "password_hash",
+    "database_url",
 )
 
 
 def _infer_severity_added(key: str, value: Any) -> Severity:
-    """Heuristic: critical keys missing from base indicate drift."""
-    if any(key.lower().startswith(p) for p in _CRITICAL_PREFIXES):
+    """Heuristic: classify severity as BREAKING if the key contains a critical term at a word boundary."""
+    if _key_contains_critical_term(key, _CRITICAL_PREFIXES):
         return Severity.BREAKING
     return Severity.WARNING
 
 
 def _infer_severity_removed(key: str, value: Any) -> Severity:
-    if any(key.lower().startswith(p) for p in _CRITICAL_PREFIXES):
+    if _key_contains_critical_term(key, _CRITICAL_PREFIXES):
         return Severity.BREAKING
     return Severity.WARNING
 
 
 def _infer_severity_changed(key: str, old: Any, new: Any) -> Severity:
-    if any(key.lower().startswith(p) for p in _CRITICAL_PREFIXES):
+    if _key_contains_critical_term(key, _CRITICAL_PREFIXES):
         return Severity.BREAKING
     return Severity.INFO

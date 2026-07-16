@@ -55,9 +55,7 @@ class TestDiffResult:
                     change_type=ChangeType.CHANGED,
                     severity=Severity.BREAKING,
                 ),
-                Change(
-                    key="port", change_type=ChangeType.CHANGED, severity=Severity.INFO
-                ),
+                Change(key="port", change_type=ChangeType.CHANGED, severity=Severity.INFO),
             ]
         )
         assert r.has_breaking is True
@@ -252,3 +250,127 @@ class TestSeverityInference:
     def test_case_insensitive_prefix(self):
         assert _infer_severity_added("Database_url", "x") == Severity.BREAKING
         assert _infer_severity_added("API_KEY", "x") == Severity.BREAKING
+
+
+class TestSeveritySubstringMatch:
+    """Regression tests: severity must be BREAKING when the critical term appears
+    anywhere in the key name (substring match), not only as a prefix.
+
+    Prior bug: ``key.lower().startswith(p)`` caused keys like ``db_password``
+    and ``jwt_token`` to be classified as WARNING instead of BREAKING.
+    """
+
+    def test_embedded_password(self):
+        assert _infer_severity_added("db_password", "x") == Severity.BREAKING
+
+    def test_embedded_token(self):
+        assert _infer_severity_removed("jwt_token", "x") == Severity.BREAKING
+
+    def test_embedded_secret_changed(self):
+        assert _infer_severity_changed("app_secret_key", "a", "b") == Severity.BREAKING
+
+    def test_embedded_auth(self):
+        assert _infer_severity_added("mysql_auth_url", "x") == Severity.BREAKING
+
+    def test_embedded_endpoint(self):
+        assert _infer_severity_removed("connection_endpoint", "x") == Severity.BREAKING
+
+    def test_embedded_api_key(self):
+        assert _infer_severity_added("main_api_key_id", "x") == Severity.BREAKING
+
+    def test_embedded_oauth_token(self):
+        assert _infer_severity_removed("oauth_token", "x") == Severity.BREAKING
+
+    def test_embedded_database(self):
+        assert _infer_severity_added("mysql_database_name", "x") == Severity.BREAKING
+
+    def test_non_sensitive_still_warning_added(self):
+        assert _infer_severity_added("cache_ttl", "300") == Severity.WARNING
+
+    def test_non_sensitive_still_info_changed(self):
+        assert _infer_severity_changed("log_level", "debug", "info") == Severity.INFO
+
+    def test_diff_configs_detects_embedded_breaking(self):
+        """End-to-end: diff_configs must surface BREAKING for embedded-term keys."""
+        base = {"db_password": "old_secret", "port": "8080"}
+        target = {"db_password": "new_secret", "port": "9090"}
+        result = diff_configs(base, target)
+        assert result.has_breaking, "expected BREAKING for db_password change"
+
+
+class TestSeverityWordBoundaryMatch:
+    """Tests for the word-boundary/segment matching severity inference.
+
+    The new algorithm splits keys into words (dot/snake/kebab/camel) and matches
+    critical terms as contiguous word sequences. This fixes:
+    - Nested flattened keys: services.database.password -> BREAKING (database)
+    - False positives: author, secretary, tokenizer -> NOT BREAKING
+    - Concatenated forms: apikey -> BREAKING (api_key)
+    """
+
+    # True positives: nested/segmented keys that SHOULD be BREAKING
+    def test_nested_database_password(self):
+        assert _infer_severity_added("services.database.password", "x") == Severity.BREAKING
+
+    def test_nested_auth_token(self):
+        assert _infer_severity_added("auth.token.secret", "x") == Severity.BREAKING
+
+    def test_snake_case_api_key(self):
+        assert _infer_severity_added("my_api_key", "x") == Severity.BREAKING
+
+    def test_kebab_case_secret_key(self):
+        assert _infer_severity_added("my-secret-key", "x") == Severity.BREAKING
+
+    def test_camel_case_password_hash(self):
+        assert _infer_severity_added("passwordHash", "x") == Severity.BREAKING
+
+    def test_camel_case_endpoint_url(self):
+        assert _infer_severity_added("endpointUrl", "x") == Severity.BREAKING
+
+    def test_concatenated_api_key(self):
+        assert _infer_severity_added("apikey", "x") == Severity.BREAKING
+
+    def test_concatenated_auth_token(self):
+        assert _infer_severity_added("authtoken", "x") == Severity.BREAKING
+
+    def test_concatenated_secret_key(self):
+        assert _infer_severity_added("secretkey", "x") == Severity.BREAKING
+
+    def test_concatenated_password_hash(self):
+        assert _infer_severity_added("passwordhash", "x") == Severity.BREAKING
+
+    def test_concatenated_database_url(self):
+        assert _infer_severity_added("databaseurl", "x") == Severity.BREAKING
+
+    # False positives fixed: these should NOT be BREAKING
+    def test_author_not_auth(self):
+        assert _infer_severity_added("author", "x") == Severity.WARNING
+
+    def test_secretary_not_secret(self):
+        assert _infer_severity_added("secretary", "x") == Severity.WARNING
+
+    def test_tokenizer_not_token(self):
+        assert _infer_severity_added("tokenizer", "x") == Severity.WARNING
+
+    def test_endpointer_not_endpoint(self):
+        assert _infer_severity_added("endpointer", "x") == Severity.WARNING
+
+    def test_database_not_in_databaseadmin(self):
+        assert _infer_severity_added("databaseadmin", "x") == Severity.WARNING
+
+    # False positives for removed/changed
+    def test_author_removed_not_breaking(self):
+        assert _infer_severity_removed("author", "x") == Severity.WARNING
+
+    def test_secretary_changed_not_breaking(self):
+        assert _infer_severity_changed("secretary", "a", "b") == Severity.INFO
+
+    # Mixed: nested with false positive prefix
+    def test_databaseadmin_not_breaking(self):
+        assert _infer_severity_added("databaseadmin", "x") == Severity.WARNING
+
+    def test_authentication_not_auth(self):
+        assert _infer_severity_added("authentication", "x") == Severity.WARNING
+
+    def test_authz_not_auth(self):
+        assert _infer_severity_added("authz", "x") == Severity.WARNING
