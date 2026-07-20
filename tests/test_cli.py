@@ -405,6 +405,40 @@ class TestInitCommand:
             data = json.loads(result.stdout)
             assert "prod" in data
 
+    def test_scan_dir_names_with_dots_preserved(self):
+        """Dir names containing dots must not be truncated by Path.stem."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dev_dir = Path(tmpdir) / "dev"
+            prod_us = Path(tmpdir) / "prod.us"
+            prod_eu = Path(tmpdir) / "prod.eu"
+            dev_dir.mkdir()
+            prod_us.mkdir()
+            prod_eu.mkdir()
+            (dev_dir / "c.yaml").write_text(yaml.dump({"host": "localhost"}))
+            (prod_us / "c.yaml").write_text(yaml.dump({"host": "us.example.com"}))
+            (prod_eu / "c.yaml").write_text(yaml.dump({"host": "eu.example.com"}))
+
+            # Table output: all 3 envs must appear as distinct columns
+            result = runner.invoke(
+                app,
+                ["scan", str(dev_dir), str(prod_us), str(prod_eu)],
+            )
+            assert result.exit_code == 0, f"STDOUT: {result.stdout}"
+            assert "dev →" in result.stdout, "Baseline 'dev' should appear in table"
+            assert "prod.us" in result.stdout, f"Missing prod.us in output:\n{result.stdout}"
+            assert "prod.eu" in result.stdout, f"Missing prod.eu in output:\n{result.stdout}"
+
+            # JSON output: both targets must be separate keys (not collapsed)
+            result2 = runner.invoke(
+                app,
+                ["scan", str(dev_dir), str(prod_us), str(prod_eu), "--output", "json"],
+            )
+            assert result2.exit_code == 0, f"STDOUT: {result2.stdout}"
+            data = json.loads(result2.stdout)
+            assert "prod.us" in data, f"Missing prod.us in {list(data.keys())}"
+            assert "prod.eu" in data, f"Missing prod.eu in {list(data.keys())}"
+            assert len(data) == 2, f"Expected 2 targets, got {len(data)}: {list(data.keys())}"
+
     def test_scan_no_changes_env_skipped_in_table(self):
         """Scan with multiple envs where one has no changes."""
         with tempfile.TemporaryDirectory() as tmpdir:

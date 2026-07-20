@@ -267,7 +267,7 @@ def scan(
         # Use directory basenames as env names
         dir_mapping = {}
         for d in dirs:
-            env_name = Path(d).stem
+            env_name = Path(d).name
             dir_mapping[env_name] = d
     else:
         console.print(
