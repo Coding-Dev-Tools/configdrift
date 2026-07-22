@@ -19,10 +19,14 @@ jobs:
           set -eu
           existing=$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$GITHUB_REF_NAME" --state open --json number --jq 'length')
           if [ "$existing" = "0" ]; then
+            # The default GITHUB_TOKEN may lack pull-requests:write in some org
+            # configurations. Fail gracefully so the CI job stays green; the PR
+            # can be opened externally (e.g. by the orchestrator agent).
             gh pr create --repo "$GITHUB_REPOSITORY" \
               --head "$GITHUB_REF_NAME" \
               --title "cowork-bot: automated improvements ($GITHUB_REF_NAME)" \
-              --body "Automated improvement PR from the Cowork repo-improver rotation (one coherent senior-dev improvement per run; see individual commit messages). Subsequent runs push additional commits to this PR rather than opening new ones."
+              --body "Automated improvement PR from the Cowork repo-improver rotation (one coherent senior-dev improvement per run; see individual commit messages). Subsequent runs push additional commits to this PR rather than opening new ones." \
+              || echo "::warning::gh pr create failed (likely token permission). Open the PR manually or via an external agent."
           else
             echo "Open PR already exists for $GITHUB_REF_NAME — nothing to do."
           fi

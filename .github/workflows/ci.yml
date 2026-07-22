@@ -35,3 +35,4 @@ jobs:
       - name: Lint with ruff
         run: ruff check src/ tests/
       - name: Run tests
+        run: python -m pytest tests/ -v --tb=short
