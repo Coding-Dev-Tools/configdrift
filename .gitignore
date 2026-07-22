@@ -64,3 +64,6 @@ fixtures/generated/
 .ruff_cache/
 node_modules/
 nul  
+
+# npm lock artifact (Python-only project)
+package-lock.json
