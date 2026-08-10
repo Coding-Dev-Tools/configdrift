@@ -15,9 +15,7 @@ try:
 except ImportError:
     import warnings
 
-    warnings.warn(
-        "revenueholdings-license not installed; license checks skipped", stacklevel=2
-    )
+    warnings.warn("revenueholdings-license not installed; license checks skipped", stacklevel=2)
 
     def require_license(product: str) -> None:  # type: ignore[misc]
         pass
@@ -68,12 +66,11 @@ def main(
 ) -> None:
     """ConfigDrift CLI — detect and fix configuration drift."""
     global _require_license_strict
-    _require_license_strict = require_license_flag or bool(
-        os.environ.get("REVENUEHOLDINGS_REQUIRE_LICENSE")
-    )
+    _require_license_strict = require_license_flag or bool(os.environ.get("REVENUEHOLDINGS_REQUIRE_LICENSE"))
     if _require_license_strict:
         try:
             from revenueholdings_license import require_license as _rl
+
             _rl("configdrift")
         except ImportError:
             console.print(
@@ -97,9 +94,7 @@ _DEFAULT_BASELINE = "dev"
 _DEFAULT_TARGET = "target"
 _DEFAULT_OUTPUT: OutputFormat = OutputFormat.TABLE
 _DEFAULT_STRICT = False
-_FILES_ARG = typer.Argument(
-    ..., help="Config files to compare (2+ files; first file is baseline)."
-)
+_FILES_ARG = typer.Argument(..., help="Config files to compare (2+ files; first file is baseline).")
 _BASELINE_OPT = typer.Option(
     _DEFAULT_BASELINE,
     "--baseline",
@@ -118,9 +113,7 @@ _OUTPUT_OPT = typer.Option(
     "-o",
     help="Output format: table, json, or silent (exit code only).",
 )
-_STRICT_OPT = typer.Option(
-    _DEFAULT_STRICT, "--strict", help="Exit 1 on ANY drift, not just breaking changes."
-)
+_STRICT_OPT = typer.Option(_DEFAULT_STRICT, "--strict", help="Exit 1 on ANY drift, not just breaking changes.")
 
 
 @app.command()
@@ -137,11 +130,7 @@ def check(
         raise typer.Exit(code=1)
 
     env_configs: dict[str, dict[str, Any]] = {}
-    env_labels = (
-        [baseline, target]
-        if len(files) == 2
-        else [f"file_{i + 1}" for i in range(len(files))]
-    )
+    env_labels = [baseline, target] if len(files) == 2 else [f"file_{i + 1}" for i in range(len(files))]
 
     for label, filepath in zip(env_labels, files, strict=False):
         try:
@@ -165,11 +154,7 @@ def check(
         _output_table(results, baseline_env)
 
     # Exit codes for CI gating
-    has_drift = (
-        any(r.count > 0 for r in results.values())
-        if strict
-        else any(r.has_breaking for r in results.values())
-    )
+    has_drift = any(r.count > 0 for r in results.values()) if strict else any(r.has_breaking for r in results.values())
     if has_drift:
         raise typer.Exit(code=1)
 
@@ -187,9 +172,7 @@ def _output_table(results: dict[str, Any], baseline_env: str) -> None:
         table.add_column("Severity", style="magenta")
 
         for change in diff_result.changes:
-            symbol = {"added": "+", "removed": "-", "changed": "~"}[
-                change.change_type.value
-            ]
+            symbol = {"added": "+", "removed": "-", "changed": "~"}[change.change_type.value]
             old_str = str(change.old_value) if change.old_value is not None else ""
             new_str = str(change.new_value) if change.new_value is not None else ""
             sev_style = (
@@ -270,9 +253,7 @@ def scan(
             env_name = Path(d).name
             dir_mapping[env_name] = d
     else:
-        console.print(
-            "[red]ERROR: Provide either --config or directories as arguments.[/red]"
-        )
+        console.print("[red]ERROR: Provide either --config or directories as arguments.[/red]")
         raise typer.Exit(code=1)
 
     if baseline not in dir_mapping:
@@ -284,9 +265,7 @@ def scan(
         env_configs[env_name] = {}
         p = Path(dir_path)
         if not p.is_dir():
-            console.print(
-                f"[yellow]Warning: '{dir_path}' is not a directory, skipping.[/yellow]"
-            )
+            console.print(f"[yellow]Warning: '{dir_path}' is not a directory, skipping.[/yellow]")
             continue
         # Load all supported config files in the directory and merge
         for ext in ("*.yaml", "*.yml", "*.json", "*.toml", "*.env"):
@@ -310,11 +289,7 @@ def scan(
     else:
         _output_table(results, baseline)
 
-    has_drift = (
-        any(r.count > 0 for r in results.values())
-        if strict
-        else any(r.has_breaking for r in results.values())
-    )
+    has_drift = any(r.count > 0 for r in results.values()) if strict else any(r.has_breaking for r in results.values())
     if has_drift:
         raise typer.Exit(code=1)
 

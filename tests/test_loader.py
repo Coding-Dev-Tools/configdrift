@@ -178,9 +178,7 @@ class TestLoadDotenv:
         """Lines with 'export ' prefix should be parsed correctly."""
         with tempfile.TemporaryDirectory() as tmpdir:
             p = Path(tmpdir) / ".env"
-            p.write_text(
-                "export DATABASE_URL=postgres://localhost\nexport API_KEY=secret123\n"
-            )
+            p.write_text("export DATABASE_URL=postgres://localhost\nexport API_KEY=secret123\n")
             result = load_file(str(p))
             assert result["DATABASE_URL"] == "postgres://localhost"
             assert result["API_KEY"] == "secret123"

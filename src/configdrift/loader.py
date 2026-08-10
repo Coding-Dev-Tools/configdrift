@@ -6,9 +6,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-_toml = importlib.import_module(
-    "tomllib" if __import__("sys").version_info >= (3, 11) else "tomli"
-)
+_toml = importlib.import_module("tomllib" if __import__("sys").version_info >= (3, 11) else "tomli")
 
 
 def load_file(path: str) -> dict[str, Any]:
@@ -43,9 +41,7 @@ def _load_yaml(path: Path) -> dict[str, Any]:
     with open(path, encoding="utf-8") as f:
         data = yaml.safe_load(f)
     if not isinstance(data, dict):
-        raise ValueError(
-            f"YAML file must contain a mapping (dict), got {type(data).__name__}"
-        )
+        raise ValueError(f"YAML file must contain a mapping (dict), got {type(data).__name__}")
     return _flatten_nested(data)
 
 
@@ -53,9 +49,7 @@ def _load_json(path: Path) -> dict[str, Any]:
     with open(path, encoding="utf-8") as f:
         data = json.load(f)
     if not isinstance(data, dict):
-        raise ValueError(
-            f"JSON file must contain a mapping (dict), got {type(data).__name__}"
-        )
+        raise ValueError(f"JSON file must contain a mapping (dict), got {type(data).__name__}")
     return _flatten_nested(data)
 
 
@@ -117,7 +111,5 @@ def _flatten_nested(d: dict[str, Any], prefix: str = "") -> dict[str, Any]:
         elif value is None:
             result[full_key] = ""
         else:
-            result[full_key] = (
-                str(value) if not isinstance(value, str | int | float | bool) else value
-            )
+            result[full_key] = str(value) if not isinstance(value, str | int | float | bool) else value
     return result

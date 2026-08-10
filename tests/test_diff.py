@@ -22,9 +22,7 @@ class TestChangeDataclass:
         assert "443" in str(c)
 
     def test_change_str_removed(self):
-        c = Change(
-            key="host", change_type=ChangeType.REMOVED, old_value="localhost", env="dev"
-        )
+        c = Change(key="host", change_type=ChangeType.REMOVED, old_value="localhost", env="dev")
         assert "[-]" in str(c)
         assert "host" in str(c)
 
@@ -76,13 +74,9 @@ class TestDiffResult:
     def test_by_severity(self):
         r = DiffResult(
             changes=[
-                Change(
-                    key="a", change_type=ChangeType.CHANGED, severity=Severity.BREAKING
-                ),
+                Change(key="a", change_type=ChangeType.CHANGED, severity=Severity.BREAKING),
                 Change(key="b", change_type=ChangeType.CHANGED, severity=Severity.INFO),
-                Change(
-                    key="c", change_type=ChangeType.ADDED, severity=Severity.WARNING
-                ),
+                Change(key="c", change_type=ChangeType.ADDED, severity=Severity.WARNING),
             ]
         )
         breaking = r.by_severity(Severity.BREAKING)
