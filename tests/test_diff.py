@@ -9,6 +9,7 @@ from configdrift.diff import (
     _infer_severity_added,
     _infer_severity_changed,
     _infer_severity_removed,
+    _key_contains_critical_term,
     diff_configs,
     diff_environments,
 )
@@ -368,3 +369,26 @@ class TestSeverityWordBoundaryMatch:
 
     def test_authz_not_auth(self):
         assert _infer_severity_added("authz", "x") == Severity.WARNING
+
+
+class TestKeyContainsCriticalTerm:
+    """Direct tests for _key_contains_critical_term, covering the empty-term guard."""
+
+    def test_empty_term_returns_false(self):
+        """An empty critical term must be skipped gracefully (diff.py:74-75)."""
+        assert _key_contains_critical_term("any_key", ("",)) is False
+
+    def test_empty_among_valid_terms(self):
+        """Empty term mixed with valid terms must not break matching."""
+        assert _key_contains_critical_term("database_url", ("", "database")) is True
+        assert _key_contains_critical_term("cache_ttl", ("", "database")) is False
+
+    def test_all_empty_terms(self):
+        """Tuple of only empty strings must never match."""
+        assert _key_contains_critical_term("auth_token", ("", "", "")) is False
+
+    def test_dot_separated_match(self):
+        assert _key_contains_critical_term("services.database.password", ("database",)) is True
+
+    def test_no_match(self):
+        assert _key_contains_critical_term("cache_ttl", ("database", "auth")) is False
