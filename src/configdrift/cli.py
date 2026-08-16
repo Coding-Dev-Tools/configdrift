@@ -295,6 +295,88 @@ def scan(
 
 
 @app.command()
+def fix(
+    files: list[str] = _FILES_ARG,
+    baseline: str = _BASELINE_OPT,
+    target: str = _TARGET_OPT,
+    dry_run: bool = typer.Option(  # noqa: B008
+        False, "--dry-run", "-n", help="Show what would change without modifying files."
+    ),
+) -> None:
+    """Apply baseline values to target config files (overwrite drifted keys)."""
+    if len(files) < 2:
+        console.print("[red]ERROR: Provide at least 2 config files (baseline + target).[/red]")
+        raise typer.Exit(code=1)
+
+    baseline_path = Path(files[0])
+    target_path = Path(files[1])
+
+    if not baseline_path.exists():
+        console.print(f"[red]ERROR: Baseline file not found: {baseline_path}[/red]")
+        raise typer.Exit(code=1)
+    if not target_path.exists():
+        console.print(f"[red]ERROR: Target file not found: {target_path}[/red]")
+        raise typer.Exit(code=1)
+
+    try:
+        baseline_data = load_file(str(baseline_path))
+        target_data = load_file(str(target_path))
+    except Exception as e:
+        console.print(f"[red]Error loading configs: {e}[/red]")
+        raise typer.Exit(code=1) from e
+
+    changes = 0
+    for key, value in baseline_data.items():
+        old = target_data.get(key)
+        if old != value:
+            changes += 1
+            if not dry_run:
+                target_data[key] = value
+
+    if dry_run:
+        console.print(f"[yellow]Dry run: {changes} key(s) would be updated in {target_path}[/yellow]")
+    else:
+        ext = target_path.suffix.lower()
+        if ext == ".json":
+            import json as _json
+
+            target_path.write_text(_json.dumps(target_data, indent=2) + "\n")
+        elif ext in (".yaml", ".yml"):
+            import yaml as _yaml
+
+            # Reconstruct nested structure from flat keys for YAML output
+            nested: dict[str, Any] = {}
+            for k, v in target_data.items():
+                parts = k.split(".")
+                d = nested
+                for part in parts[:-1]:
+                    d = d.setdefault(part, {})
+                d[parts[-1]] = v
+            with open(target_path, "w", encoding="utf-8") as f:
+                _yaml.dump(nested, f, default_flow_style=False, sort_keys=False)
+        elif ext == ".toml":
+            try:
+                import tomli_w
+
+                nested_toml: dict[str, Any] = {}
+                for k, v in target_data.items():
+                    parts = k.split(".")
+                    d = nested_toml
+                    for part in parts[:-1]:
+                        d = d.setdefault(part, {})
+                    d[parts[-1]] = v
+                with open(target_path, "wb") as f:
+                    tomli_w.dump(nested_toml, f)
+            except ImportError:
+                console.print("[yellow]Warning: tomli-w not installed; writing raw TOML not supported.[/yellow]")
+                raise typer.Exit(code=1) from None
+        else:
+            console.print(f"[yellow]Warning: unsupported format '{ext}' for write-back.[/yellow]")
+            raise typer.Exit(code=1)
+        console.print(f"[green]Fixed {changes} key(s) in {target_path}[/green]")
+
+
+@app.command()
 def init(
     path: str = typer.Argument(".", help="Directory to create .configdrift.yaml in."),  # noqa: B008
 ):
