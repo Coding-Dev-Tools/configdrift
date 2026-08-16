@@ -22,6 +22,7 @@ except ImportError:
 
 
 from configdrift import __version__
+from configdrift._atomic import atomic_dump_toml, atomic_dump_yaml, atomic_write_text
 from configdrift.diff import (
     Severity,
     diff_environments,
@@ -340,10 +341,8 @@ def fix(
         if ext == ".json":
             import json as _json
 
-            target_path.write_text(_json.dumps(target_data, indent=2) + "\n")
+            atomic_write_text(target_path, _json.dumps(target_data, indent=2) + "\n")
         elif ext in (".yaml", ".yml"):
-            import yaml as _yaml
-
             # Reconstruct nested structure from flat keys for YAML output
             nested: dict[str, Any] = {}
             for k, v in target_data.items():
@@ -352,11 +351,10 @@ def fix(
                 for part in parts[:-1]:
                     d = d.setdefault(part, {})
                 d[parts[-1]] = v
-            with open(target_path, "w", encoding="utf-8") as f:
-                _yaml.dump(nested, f, default_flow_style=False, sort_keys=False)
+            atomic_dump_yaml(target_path, nested, default_flow_style=False, sort_keys=False)
         elif ext == ".toml":
             try:
-                import tomli_w
+                import tomli_w  # noqa: F401
 
                 nested_toml: dict[str, Any] = {}
                 for k, v in target_data.items():
@@ -365,8 +363,7 @@ def fix(
                     for part in parts[:-1]:
                         d = d.setdefault(part, {})
                     d[parts[-1]] = v
-                with open(target_path, "wb") as f:
-                    tomli_w.dump(nested_toml, f)
+                atomic_dump_toml(target_path, nested_toml)
             except ImportError:
                 console.print("[yellow]Warning: tomli-w not installed; writing raw TOML not supported.[/yellow]")
                 raise typer.Exit(code=1) from None
