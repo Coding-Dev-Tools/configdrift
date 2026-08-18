@@ -469,15 +469,28 @@ def fix(
             if ext == ".json":
                 import json as _json
 
+                # Reject non-string keys before JSON write-back.
+                # json.dumps coerces int keys to strings (1 → "1"), so
+                # reloading the JSON produces a string key that no longer
+                # matches the baseline's integer key, causing perpetual
+                # drift. It can also create duplicate names when the
+                # target already contains the string form.
+                non_str_keys = [k for k in target_data if not isinstance(k, str)]
+                if non_str_keys:
+                    console.print(
+                        f"[red]Error: JSON keys must be strings. "
+                        f"Non-string keys from baseline: {', '.join(repr(k) for k in non_str_keys[:5])}[/red]"
+                    )
+                    failed_targets.append(str(target_path))
+                    continue
+
                 # Preserve nested JSON structure: rebuild from flat keys.
                 # Literal dotted keys (keys that already contain '.') in the
                 # source document are kept as single mapping keys rather
                 # than being re-split into nested levels.
                 nested: dict[str, Any] = {}
                 for k, v in target_data.items():
-                    # Preserve non-string keys (valid in YAML) without
-                    # applying string operations that would raise TypeError.
-                    if not isinstance(k, str) or "." not in k:
+                    if "." not in k:
                         nested[k] = v
                     else:
                         parts = k.split(".")
@@ -487,7 +500,7 @@ def fix(
                                 d[part] = {}
                             d = d[part]
                         d[parts[-1]] = v
-                atomic_write_text(target_path, _json.dumps(nested_json, indent=2, default=_json_null_handler) + "\n")
+                atomic_write_text(target_path, _json.dumps(nested, indent=2, default=_json_null_handler) + "\n")
             elif ext in (".yaml", ".yml"):
                 # Reconstruct nested structure from flat keys for YAML output
                 nested: dict[str, Any] = {}

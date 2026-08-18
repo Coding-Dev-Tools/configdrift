@@ -40,7 +40,13 @@ def atomic_write_text(path: Path, text: str, encoding: str = "utf-8") -> None:
             st = resolved.stat()
             os.chmod(tmp, st.st_mode)
             try:
-                os.chown(tmp, st.st_uid, st.st_gid)
+                if hasattr(os, "chown"):
+                    os.chown(tmp, st.st_uid, st.st_gid)
+                else:
+                    # os.chown is Unix-only; on Windows ownership is managed
+                    # by the filesystem ACLs and mkstemp already creates
+                    # the temp file with the caller's identity.
+                    pass
             except OSError as chown_err:
                 with contextlib.suppress(OSError):
                     os.unlink(tmp)
@@ -79,7 +85,13 @@ def atomic_write_bytes(path: Path, data: bytes) -> None:
             st = resolved.stat()
             os.chmod(tmp, st.st_mode)
             try:
-                os.chown(tmp, st.st_uid, st.st_gid)
+                if hasattr(os, "chown"):
+                    os.chown(tmp, st.st_uid, st.st_gid)
+                else:
+                    # os.chown is Unix-only; on Windows ownership is managed
+                    # by the filesystem ACLs and mkstemp already creates
+                    # the temp file with the caller's identity.
+                    pass
             except OSError as chown_err:
                 with contextlib.suppress(OSError):
                     os.unlink(tmp)
