@@ -45,7 +45,7 @@ from configdrift.diff import (
     Severity,
     diff_environments,
 )
-from configdrift.loader import load_file
+from configdrift.loader import get_literal_dotted_keys, load_file
 
 app = typer.Typer(
     name="configdrift",
@@ -322,14 +322,15 @@ def fix(
         False, "--dry-run", "-n", help="Show what would change without modifying files."
     ),
 ) -> None:
-    try:
-        baseline_data, baseline_literal_dotted = load_file(str(baseline_path))
-    except Exception as e:
-        console.print(f"[red]Error loading baseline config: {e}[/red]")
-        raise typer.Exit(code=1) from e
+    baseline_path = Path(files[0])
     if not baseline_path.exists():
         console.print(f"[red]ERROR: Baseline file not found: {baseline_path}[/red]")
         raise typer.Exit(code=1)
+    try:
+        baseline_data = load_file(str(baseline_path))
+    except Exception as e:
+        console.print(f"[red]Error loading baseline config: {e}[/red]")
+        raise typer.Exit(code=1) from e
 
 
     # Track targets that could not be fixed so the command returns a
@@ -346,7 +347,7 @@ def fix(
             continue
 
         try:
-            target_data, target_literal_dotted = load_file(str(target_path))
+            target_data = load_file(str(target_path))
         except Exception as e:
             console.print(f"[red]Error loading target config {target_path}: {e}[/red]")
             failed_targets.append(str(target_path))
@@ -488,7 +489,7 @@ def fix(
                 # source document are kept as single mapping keys rather
                 # than being re-split into nested levels.
                 # Merge literal dotted keys from both baseline and target
-                all_literal_dotted = baseline_literal_dotted | target_literal_dotted
+                all_literal_dotted = get_literal_dotted_keys(str(baseline_path)) | get_literal_dotted_keys(str(target_path))
                 nested: dict[str, Any] = {}
                 for k, v in target_data.items():
                     if "." not in k or k in all_literal_dotted:
@@ -504,7 +505,7 @@ def fix(
                 atomic_write_text(target_path, _json.dumps(nested, indent=2, default=_json_null_handler) + "\n")
             elif ext in (".yaml", ".yml"):
                 # Reconstruct nested structure from flat keys for YAML output
-                all_literal_dotted = baseline_literal_dotted | target_literal_dotted
+                all_literal_dotted = get_literal_dotted_keys(str(baseline_path)) | get_literal_dotted_keys(str(target_path))
                 nested: dict[str, Any] = {}
                 for k, v in target_data.items():
                     if "." not in k or k in all_literal_dotted:
@@ -542,7 +543,7 @@ def fix(
                         )
                         failed_targets.append(str(target_path))
                         continue
-                    all_literal_dotted = baseline_literal_dotted | target_literal_dotted
+                    all_literal_dotted = get_literal_dotted_keys(str(baseline_path)) | get_literal_dotted_keys(str(target_path))
                     nested_toml: dict[str, Any] = {}
                     for k, v in target_data.items():
                         if "." not in k or k in all_literal_dotted:

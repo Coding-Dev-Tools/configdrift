@@ -6,36 +6,56 @@ import re
 from pathlib import Path
 from typing import Any
 
+_literal_dotted_cache: dict[str, set[str]] = {}
+
+
+def get_literal_dotted_keys(path: str) -> set[str]:
+    """Retrieve literal dotted keys stored by the most recent load_file(path) call."""
+    return _literal_dotted_cache.get(str(Path(path).resolve()), set())
+
+
 _toml = importlib.import_module("tomllib" if __import__("sys").version_info >= (3, 11) else "tomli")
 
 
-def load_file(path: str) -> tuple[dict[str, Any], set[str]]:
+def load_file(path: str) -> dict[str, Any]:
     """Load a config file based on its extension.
 
-    Returns a tuple of (flat_data, literal_dotted_keys) where
-    literal_dotted_keys is the set of top-level keys that already
-    contained dots in the original document.
+    Returns flat data with dot-separated keys for nested values.
+    Literal dotted keys (top-level keys already containing dots in the
+    source document) are stored internally and can be retrieved via
+    ``get_literal_dotted_keys(path)`` — used by the ``fix`` command to
+    avoid re-splitting them during reconstruction.
     """
     p = Path(path)
     ext = p.suffix.lower()
+    resolved = str(p.resolve())
     if ext in (".yaml", ".yml"):
-        return _load_yaml(p)
+        result, literal = _load_yaml(p)
+        _literal_dotted_cache[resolved] = literal
+        return result
     elif ext == ".json":
-        return _load_json(p)
+        result, literal = _load_json(p)
+        _literal_dotted_cache[resolved] = literal
+        return result
     elif ext == ".toml":
-        return _load_toml(p)
+        result, literal = _load_toml(p)
+        _literal_dotted_cache[resolved] = literal
+        return result
     elif ext == ".env":
-        return _load_dotenv(p), set()
+        _literal_dotted_cache[resolved] = set()
+        return _load_dotenv(p)
     else:
-        # Try known parsers in order
         for loader in [_load_yaml, _load_json, _load_toml]:
             try:
-                return loader(p)
+                result, literal = loader(p)
+                _literal_dotted_cache[resolved] = literal
+                return result
             except Exception:
                 continue
         # Last resort: try dotenv
         try:
-            return _load_dotenv(p), set()
+            _literal_dotted_cache[resolved] = set()
+            return _load_dotenv(p)
         except Exception:
             pass
         raise ValueError(f"Unsupported file format: {ext}") from None
