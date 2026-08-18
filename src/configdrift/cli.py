@@ -322,21 +322,15 @@ def fix(
         False, "--dry-run", "-n", help="Show what would change without modifying files."
     ),
 ) -> None:
-    """Apply baseline values to target config files (overwrite drifted keys)."""
-    if len(files) < 2:
-        console.print("[red]ERROR: Provide at least 2 config files (baseline + target).[/red]")
-        raise typer.Exit(code=1)
-
-    baseline_path = Path(files[0])
+    try:
+        baseline_data, baseline_literal_dotted = load_file(str(baseline_path))
+    except Exception as e:
+        console.print(f"[red]Error loading baseline config: {e}[/red]")
+        raise typer.Exit(code=1) from e
     if not baseline_path.exists():
         console.print(f"[red]ERROR: Baseline file not found: {baseline_path}[/red]")
         raise typer.Exit(code=1)
 
-    try:
-        baseline_data = load_file(str(baseline_path))
-    except Exception as e:
-        console.print(f"[red]Error loading baseline config: {e}[/red]")
-        raise typer.Exit(code=1) from e
 
     # Track targets that could not be fixed so the command returns a
     # non-zero exit code when any target is missing, fails to load, or
@@ -352,7 +346,7 @@ def fix(
             continue
 
         try:
-            target_data = load_file(str(target_path))
+            target_data, target_literal_dotted = load_file(str(target_path))
         except Exception as e:
             console.print(f"[red]Error loading target config {target_path}: {e}[/red]")
             failed_targets.append(str(target_path))
@@ -379,6 +373,11 @@ def fix(
                 # (8080 vs "8080" and True vs "true" would otherwise keep drifting).
                 cmp_value = value
                 if _target_is_dotenv:
+                    if isinstance(value, (dict, list, tuple)):
+                        # Collections cannot be represented in dotenv —
+                        # skip this key so the comparison does not
+                        # stringify the Python repr and drift forever.
+                        continue
                     if value is None:
                         cmp_value = ""
                     elif isinstance(value, bool):
@@ -488,9 +487,11 @@ def fix(
                 # Literal dotted keys (keys that already contain '.') in the
                 # source document are kept as single mapping keys rather
                 # than being re-split into nested levels.
+                # Merge literal dotted keys from both baseline and target
+                all_literal_dotted = baseline_literal_dotted | target_literal_dotted
                 nested: dict[str, Any] = {}
                 for k, v in target_data.items():
-                    if "." not in k:
+                    if "." not in k or k in all_literal_dotted:
                         nested[k] = v
                     else:
                         parts = k.split(".")
@@ -503,9 +504,10 @@ def fix(
                 atomic_write_text(target_path, _json.dumps(nested, indent=2, default=_json_null_handler) + "\n")
             elif ext in (".yaml", ".yml"):
                 # Reconstruct nested structure from flat keys for YAML output
+                all_literal_dotted = baseline_literal_dotted | target_literal_dotted
                 nested: dict[str, Any] = {}
                 for k, v in target_data.items():
-                    if "." not in k:
+                    if "." not in k or k in all_literal_dotted:
                         nested[k] = v
                     else:
                         parts = k.split(".")
@@ -540,10 +542,10 @@ def fix(
                         )
                         failed_targets.append(str(target_path))
                         continue
-
+                    all_literal_dotted = baseline_literal_dotted | target_literal_dotted
                     nested_toml: dict[str, Any] = {}
                     for k, v in target_data.items():
-                        if "." not in k:
+                        if "." not in k or k in all_literal_dotted:
                             nested_toml[k] = v
                         else:
                             parts = k.split(".")
@@ -592,17 +594,31 @@ def fix(
                     continue
                 lines = []
                 for k, v in target_data.items():
+                    # Reject non-scalar values that dotenv cannot represent
+                    if isinstance(v, (dict, list, tuple)):
+                        console.print(
+                            f"[red]Error: dotenv cannot represent collection values. "
+                            f"Key '{k}' has type {type(v).__name__}[/red]"
+                        )
+                        failed_targets.append(str(target_path))
+                        break
                     # Convert Python booleans to lowercase for dotenv compatibility
                     if isinstance(v, bool):
                         str_v = "true" if v else "false"
                     else:
                         str_v = str(v) if v is not None else ""
-                    if " " in str_v or "#" in str_v or '"' in str_v:
+                    # Quote values containing whitespace (space, tab),
+                    # comments (#), or double quotes. Tabs at the start
+                    # or end are stripped by _load_dotenv's .strip(),
+                    # so quoting preserves them through round-trip.
+                    if " " in str_v or "\t" in str_v or "#" in str_v or '"' in str_v:
                         escaped = str_v.replace('"', '\\"')
                         lines.append(f'{k}="{escaped}"')
                     else:
                         lines.append(f"{k}={str_v}")
-                atomic_write_text(target_path, "\n".join(lines) + "\n")
+                else:
+                    atomic_write_text(target_path, "\n".join(lines) + "\n")
+                    continue
             else:
                 console.print(f"[red]Error: unsupported format '{ext}' for write-back of {target_path}.[/red]")
                 failed_targets.append(str(target_path))
