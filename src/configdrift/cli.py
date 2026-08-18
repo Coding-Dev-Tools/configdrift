@@ -379,9 +379,11 @@ def fix(
                 # (8080 vs "8080" and True vs "true" would otherwise keep drifting).
                 cmp_value = value
                 if _target_is_dotenv:
-                    if isinstance(value, bool):
+                    if value is None:
+                        cmp_value = ""
+                    elif isinstance(value, bool):
                         cmp_value = "true" if value else "false"
-                    elif value is not None and not isinstance(value, str):
+                    elif not isinstance(value, str):
                         cmp_value = str(value)
                 if target_data[key] != cmp_value:
                     changes += 1
@@ -424,6 +426,32 @@ def fix(
                     console.print(
                         f"[red]Error: TOML does not support null values. "
                         f"Keys with null: {', '.join(null_keys[:5])}[/red]"
+                    )
+                    failed_targets.append(str(target_path))
+                    continue
+            # Validate dotenv keys and multiline values during dry run so
+            # --dry-run accurately predicts real-run rejections.
+            if is_dotenv:
+                import re as _dr_re
+                _DR_KEY = _dr_re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
+                prospective_keys = set(baseline_data.keys()) | set(target_data.keys())
+                bad_keys = [k for k in prospective_keys if not isinstance(k, str) or not _DR_KEY.match(k)]
+                if bad_keys:
+                    console.print(
+                        f"[red]Error: dotenv keys must match [A-Za-z_][A-Za-z0-9_]*. "
+                        f"Invalid keys: {', '.join(str(k) for k in bad_keys[:5])}[/red]"
+                    )
+                    failed_targets.append(str(target_path))
+                    continue
+                # Check for multiline values that would corrupt the dotenv file
+                bad_multiline = [
+                    k for k, v in baseline_data.items()
+                    if isinstance(v, str) and '\n' in v
+                ]
+                if bad_multiline:
+                    console.print(
+                        f"[red]Error: dotenv values must not contain newlines. "
+                        f"Keys with newlines: {', '.join(bad_multiline[:5])}[/red]"
                     )
                     failed_targets.append(str(target_path))
                     continue
@@ -517,11 +545,25 @@ def fix(
                 # on reload, causing perpetual drift.
                 import re as _dotenv_re
                 _DOTENV_KEY_RE = _dotenv_re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
-                bad_keys = [k for k in target_data if not _DOTENV_KEY_RE.match(k)]
+                bad_keys = [k for k in target_data if not isinstance(k, str) or not _DOTENV_KEY_RE.match(k)]
                 if bad_keys:
                     console.print(
                         f"[red]Error: dotenv keys must match [A-Za-z_][A-Za-z0-9_]*. "
-                        f"Invalid keys: {', '.join(bad_keys[:5])}[/red]"
+                        f"Invalid keys: {', '.join(str(k) for k in bad_keys[:5])}[/red]"
+                    )
+                    failed_targets.append(str(target_path))
+                    continue
+                # Reject multiline values — newlines would corrupt the
+                # dotenv file by splitting a single KEY=VALUE across
+                # multiple physical lines.
+                multiline_keys = [
+                    k for k, v in target_data.items()
+                    if isinstance(v, str) and '\n' in v
+                ]
+                if multiline_keys:
+                    console.print(
+                        f"[red]Error: dotenv values must not contain newlines. "
+                        f"Keys with newlines: {', '.join(multiline_keys[:5])}[/red]"
                     )
                     failed_targets.append(str(target_path))
                     continue
