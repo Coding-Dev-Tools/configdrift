@@ -387,7 +387,8 @@ def fix(
             # .env files need name-based detection: literal .env, or
             # environment-suffixed variants like .env.prod, .env.dev
             is_dotenv = (
-                target_path.name == ".env"
+                ext == ".env"
+                or target_path.name == ".env"
                 or target_path.name.startswith(".env.")
             )
             supported_exts = {".json", ".yaml", ".yml", ".toml"}
@@ -396,6 +397,17 @@ def fix(
                     import tomli_w  # noqa: F401
                 except ImportError:
                     console.print("[red]Error: tomli-w is required to write TOML files. Install with: pip install tomli-w[/red]")
+                    failed_targets.append(str(target_path))
+                    continue
+                # Validate null compatibility during dry run so --dry-run
+                # accurately predicts the real-run rejection.
+                has_null = any(v is None for v in target_data.values())
+                if has_null:
+                    null_keys = [k for k, v in target_data.items() if v is None]
+                    console.print(
+                        f"[red]Error: TOML does not support null values. "
+                        f"Keys with null: {', '.join(null_keys[:5])}[/red]"
+                    )
                     failed_targets.append(str(target_path))
                     continue
             elif not is_dotenv and ext not in supported_exts:
