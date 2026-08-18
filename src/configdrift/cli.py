@@ -359,6 +359,13 @@ def fix(
             continue
 
         changes = 0
+        # Detect dotenv target early so we can normalize boolean comparisons.
+        _target_ext = target_path.suffix.lower()
+        _target_is_dotenv = (
+            _target_ext == ".env"
+            or target_path.name == ".env"
+            or target_path.name.startswith(".env.")
+        )
         for key, value in baseline_data.items():
             # Distinguish missing keys from null values: a baseline null
             # must restore a missing target key, not be silently skipped.
@@ -366,10 +373,17 @@ def fix(
                 changes += 1
                 if not dry_run:
                     target_data[key] = value
-            elif target_data[key] != value:
-                changes += 1
-                if not dry_run:
-                    target_data[key] = value
+            else:
+                # When fixing a dotenv target, normalize boolean baseline
+                # values to their lowercase string form so the comparison
+                # converges (True vs "true" would otherwise keep drifting).
+                cmp_value = value
+                if _target_is_dotenv and isinstance(value, bool):
+                    cmp_value = "true" if value else "false"
+                if target_data[key] != cmp_value:
+                    changes += 1
+                    if not dry_run:
+                        target_data[key] = cmp_value
 
         # Skip write-back when no changes detected
         if changes == 0:
@@ -491,12 +505,23 @@ def fix(
                     failed_targets.append(str(target_path))
                     continue
             elif is_dotenv:
-                # Handle .env targets: write flat KEY=VALUE format
+                # Handle .env targets: write flat KEY=VALUE format.
+                # Reject keys containing dots — _load_dotenv only accepts
+                # [A-Za-z_][A-Za-z0-9_]* identifiers, so dotted keys from
+                # flattened JSON/YAML baselines would be silently dropped
+                # on reload, causing perpetual drift.
+                import re as _dotenv_re
+                _DOTENV_KEY_RE = _dotenv_re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
+                bad_keys = [k for k in target_data if not _DOTENV_KEY_RE.match(k)]
+                if bad_keys:
+                    console.print(
+                        f"[red]Error: dotenv keys must match [A-Za-z_][A-Za-z0-9_]*. "
+                        f"Invalid keys: {', '.join(bad_keys[:5])}[/red]"
+                    )
+                    failed_targets.append(str(target_path))
+                    continue
                 lines = []
                 for k, v in target_data.items():
-                    # Quote values containing spaces, comments, or special chars.
-                    # Escape embedded double quotes so the value round-trips
-                    # through any POSIX-compatible shell or dotenv parser.
                     # Convert Python booleans to lowercase for dotenv compatibility
                     if isinstance(v, bool):
                         str_v = "true" if v else "false"

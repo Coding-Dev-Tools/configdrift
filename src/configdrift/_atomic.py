@@ -32,11 +32,14 @@ def atomic_write_text(path: Path, text: str, encoding: str = "utf-8") -> None:
             fh.write(text)
             fh.flush()
             os.fsync(fh.fileno())
-        # Preserve target permissions during atomic replacement
+        # Preserve target permissions and ownership during atomic replacement
         if resolved.exists():
             try:
                 st = resolved.stat()
                 os.chmod(tmp, st.st_mode)
+                # Preserve owner so application accounts can still read the
+                # config after a privileged deployment user runs fix.
+                os.chown(tmp, st.st_uid, st.st_gid)
             except OSError:
                 pass
         os.replace(tmp, resolved)
@@ -63,11 +66,12 @@ def atomic_write_bytes(path: Path, data: bytes) -> None:
             fh.write(data)
             fh.flush()
             os.fsync(fh.fileno())
-        # Preserve target permissions during atomic replacement
+        # Preserve target permissions and ownership during atomic replacement
         if resolved.exists():
             try:
                 st = resolved.stat()
                 os.chmod(tmp, st.st_mode)
+                os.chown(tmp, st.st_uid, st.st_gid)
             except OSError:
                 pass
         os.replace(tmp, resolved)
