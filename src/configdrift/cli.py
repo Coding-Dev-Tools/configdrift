@@ -29,12 +29,16 @@ def _json_null_handler(obj: Any) -> Any:
 
     Handles None values and date/datetime objects that were preserved through
     the flatten cycle so they serialize correctly instead of raising TypeError.
+    Date/datetime objects are serialized as ISO strings so cross-format
+    fixes converge (YAML date → JSON string won't keep reporting drift).
     """
     if obj is None:
         return None
     # Handle date/datetime objects from cross-format fixes (YAML/TOML → JSON)
     import datetime
-    if isinstance(obj, (datetime.date, datetime.datetime)):
+    if isinstance(obj, datetime.datetime):
+        return obj.isoformat()
+    if isinstance(obj, datetime.date):
         return obj.isoformat()
     raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
 from configdrift.diff import (
@@ -443,6 +447,19 @@ def fix(
             elif ext == ".toml":
                 try:
                     import tomli_w  # noqa: F401
+
+                    # Reject None values before building the TOML dict —
+                    # TOML has no null representation, so tomli_w would
+                    # raise TypeError on serialization.
+                    has_null = any(v is None for v in target_data.values())
+                    if has_null:
+                        null_keys = [k for k, v in target_data.items() if v is None]
+                        console.print(
+                            f"[red]Error: TOML does not support null values. "
+                            f"Keys with null: {', '.join(null_keys[:5])}[/red]"
+                        )
+                        failed_targets.append(str(target_path))
+                        continue
 
                     nested_toml: dict[str, Any] = {}
                     for k, v in target_data.items():

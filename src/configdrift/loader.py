@@ -64,16 +64,24 @@ def _strip_inline_comment(value: str) -> str:
 
     Handles: KEY=value # comment  →  value
     Preserves: KEY="val # ue"       →  "val # ue" (quotes stripped later)
+    Handles: KEY="say \"#\" now"    →  "say \"#\" now" (escaped quotes don't toggle)
     """
     in_single = False
     in_double = False
-    for i, ch in enumerate(value):
+    i = 0
+    while i < len(value):
+        ch = value[i]
+        # Handle backslash-escaped characters inside double quotes
+        if ch == '\\' and in_double and i + 1 < len(value):
+            i += 2  # skip the escaped character
+            continue
         if ch == '"' and not in_single:
             in_double = not in_double
         elif ch == "'" and not in_double:
             in_single = not in_single
         elif ch == "#" and not in_single and not in_double:
             return value[:i].rstrip()
+        i += 1
     return value
 
 
