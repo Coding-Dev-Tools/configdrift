@@ -23,6 +23,9 @@ except ImportError:
 
 from configdrift import __version__
 from configdrift._atomic import atomic_dump_toml, atomic_dump_yaml, atomic_write_text
+from configdrift.diff import Severity, diff_environments
+from configdrift.loader import get_literal_dotted_keys, load_file
+
 
 def _json_null_handler(obj: Any) -> Any:
     """JSON serializer for objects not serializable by default json code.
@@ -43,6 +46,7 @@ def _json_null_handler(obj: Any) -> Any:
     if isinstance(obj, datetime.time):
         return obj.isoformat()
     raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
+
 
 def _reconstruct_nested(flat_data: dict[str, Any], literal_dotted: dict[str, int]) -> dict[str, Any]:
     """Rebuild nested dict from flat keys, respecting literal dotted keys.
@@ -81,11 +85,6 @@ def _reconstruct_nested(flat_data: dict[str, Any], literal_dotted: dict[str, int
                 d = d[part]
             d[parts[-1]] = v
     return nested
-from configdrift.diff import (
-    Severity,
-    diff_environments,
-)
-from configdrift.loader import get_literal_dotted_keys, load_file
 
 app = typer.Typer(
     name="configdrift",
@@ -628,10 +627,7 @@ def fix(
                         failed_targets.append(str(target_path))
                         break
                     # Convert Python booleans to lowercase for dotenv compatibility
-                    if isinstance(v, bool):
-                        str_v = "true" if v else "false"
-                    else:
-                        str_v = str(v) if v is not None else ""
+                    str_v = ("true" if v else "false") if isinstance(v, bool) else str(v) if v is not None else ""
                     # Quote values containing whitespace (space, tab),
                     # comments (#), or double quotes. Tabs at the start
                     # or end are stripped by _load_dotenv's .strip(),
