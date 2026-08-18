@@ -352,8 +352,13 @@ def fix(
 
         changes = 0
         for key, value in baseline_data.items():
-            old = target_data.get(key)
-            if old != value:
+            # Distinguish missing keys from null values: a baseline null
+            # must restore a missing target key, not be silently skipped.
+            if key not in target_data:
+                changes += 1
+                if not dry_run:
+                    target_data[key] = value
+            elif target_data[key] != value:
                 changes += 1
                 if not dry_run:
                     target_data[key] = value
@@ -371,9 +376,13 @@ def fix(
             # dry-run mode so --dry-run accurately predicts whether the
             # real run would succeed.
             ext = target_path.suffix.lower()
-            # .env files (literal name, no extension) need name-based detection
-            is_dotenv = ext == ".env" or target_path.name == ".env"
-            supported_exts = {".json", ".yaml", ".yml", ".toml", ".env"}
+            # .env files need name-based detection: literal .env, or
+            # environment-suffixed variants like .env.prod, .env.dev
+            is_dotenv = (
+                target_path.name == ".env"
+                or target_path.name.startswith(".env.")
+            )
+            supported_exts = {".json", ".yaml", ".yml", ".toml"}
             if ext == ".toml":
                 try:
                     import tomli_w  # noqa: F401
@@ -388,7 +397,10 @@ def fix(
             console.print(f"[yellow]Dry run: {changes} key(s) would be updated in {target_path}[/yellow]")
         else:
             ext = target_path.suffix.lower()
-            is_dotenv = ext == ".env" or target_path.name == ".env"
+            is_dotenv = (
+                target_path.name == ".env"
+                or target_path.name.startswith(".env.")
+            )
             if ext == ".json":
                 import json as _json
 

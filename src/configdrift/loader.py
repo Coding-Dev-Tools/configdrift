@@ -96,7 +96,12 @@ def _load_dotenv(path: Path) -> dict[str, Any]:
                 val = _strip_inline_comment(val)
                 # Strip surrounding quotes
                 if len(val) >= 2 and val[0] == val[-1] and val[0] in ('"', "'"):
+                    quote_char = val[0]
                     val = val[1:-1]
+                    # Unescape backslash-escaped quotes for round-trip
+                    # fidelity with the fix writer (KEY="say \"hi\"")
+                    if quote_char == '"':
+                        val = val.replace('\\"', '"')
                 data[key] = val
     return data
 
