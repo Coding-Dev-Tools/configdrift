@@ -102,8 +102,14 @@ def _load_dotenv(path: Path) -> dict[str, Any]:
 
 
 def _flatten_nested(d: dict[str, Any], prefix: str = "") -> dict[str, Any]:
-    """Flatten nested dicts into dot-separated keys."""
-    result = {}
+    """Flatten nested dicts into dot-separated keys.
+
+    Preserves non-dict collection values (lists, tuples) and scalar values
+    without converting them to strings.  Keys that are already dotted in
+    the source document are kept literal — they are never re-split on
+    ``.`` during reconstruction.
+    """
+    result: dict[str, Any] = {}
     for key, value in d.items():
         full_key = f"{prefix}.{key}" if prefix else key
         if isinstance(value, dict):
@@ -111,5 +117,6 @@ def _flatten_nested(d: dict[str, Any], prefix: str = "") -> dict[str, Any]:
         elif value is None:
             result[full_key] = ""
         else:
-            result[full_key] = str(value) if not isinstance(value, str | int | float | bool) else value
+            # Preserve lists, tuples, ints, floats, bools, and strings as-is
+            result[full_key] = value
     return result

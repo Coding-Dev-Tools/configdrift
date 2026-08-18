@@ -320,17 +320,24 @@ def fix(
         console.print(f"[red]Error loading baseline config: {e}[/red]")
         raise typer.Exit(code=1) from e
 
+    # Track targets that could not be fixed so the command returns a
+    # non-zero exit code when any target is missing, fails to load, or
+    # uses an unsupported format.
+    failed_targets: list[str] = []
+
     # Process every supplied target file (not just files[1])
     for target_file in files[1:]:
         target_path = Path(target_file)
         if not target_path.exists():
             console.print(f"[red]ERROR: Target file not found: {target_path}[/red]")
+            failed_targets.append(str(target_path))
             continue
 
         try:
             target_data = load_file(str(target_path))
         except Exception as e:
             console.print(f"[red]Error loading target config {target_path}: {e}[/red]")
+            failed_targets.append(str(target_path))
             continue
 
         changes = 0
@@ -356,30 +363,37 @@ def fix(
             if ext == ".json":
                 import json as _json
 
-                # Preserve nested JSON structure: rebuild from flat keys
+                # Preserve nested JSON structure: rebuild from flat keys.
+                # Literal dotted keys (keys that already contain '.') in the
+                # source document are kept as single mapping keys rather
+                # than being re-split into nested levels.
                 nested_json: dict[str, Any] = {}
                 for k, v in target_data.items():
-                    parts = k.split(".")
-                    d = nested_json
-                    for part in parts[:-1]:
-                        # Handle scalar-to-mapping drift: replace scalar parents with dict
-                        if not isinstance(d.get(part), dict):
-                            d[part] = {}
-                        d = d[part]
-                    d[parts[-1]] = v
+                    if "." not in k:
+                        nested_json[k] = v
+                    else:
+                        parts = k.split(".")
+                        d = nested_json
+                        for part in parts[:-1]:
+                            if not isinstance(d.get(part), dict):
+                                d[part] = {}
+                            d = d[part]
+                        d[parts[-1]] = v
                 atomic_write_text(target_path, _json.dumps(nested_json, indent=2) + "\n")
             elif ext in (".yaml", ".yml"):
                 # Reconstruct nested structure from flat keys for YAML output
                 nested: dict[str, Any] = {}
                 for k, v in target_data.items():
-                    parts = k.split(".")
-                    d = nested
-                    for part in parts[:-1]:
-                        # Handle scalar-to-mapping drift: replace scalar parents with dict
-                        if not isinstance(d.get(part), dict):
-                            d[part] = {}
-                        d = d[part]
-                    d[parts[-1]] = v
+                    if "." not in k:
+                        nested[k] = v
+                    else:
+                        parts = k.split(".")
+                        d = nested
+                        for part in parts[:-1]:
+                            if not isinstance(d.get(part), dict):
+                                d[part] = {}
+                            d = d[part]
+                        d[parts[-1]] = v
                 atomic_dump_yaml(target_path, nested, default_flow_style=False, sort_keys=False)
             elif ext == ".toml":
                 try:
@@ -387,33 +401,47 @@ def fix(
 
                     nested_toml: dict[str, Any] = {}
                     for k, v in target_data.items():
-                        parts = k.split(".")
-                        d = nested_toml
-                        for part in parts[:-1]:
-                            # Handle scalar-to-mapping drift: replace scalar parents with dict
-                            if not isinstance(d.get(part), dict):
-                                d[part] = {}
-                            d = d[part]
-                        d[parts[-1]] = v
+                        if "." not in k:
+                            nested_toml[k] = v
+                        else:
+                            parts = k.split(".")
+                            d = nested_toml
+                            for part in parts[:-1]:
+                                if not isinstance(d.get(part), dict):
+                                    d[part] = {}
+                                d = d[part]
+                            d[parts[-1]] = v
                     atomic_dump_toml(target_path, nested_toml)
                 except ImportError:
-                    console.print("[yellow]Warning: tomli-w not installed; writing raw TOML not supported.[/yellow]")
-                    raise typer.Exit(code=1) from None
+                    console.print("[red]Error: tomli-w is required to write TOML files. Install with: pip install tomli-w[/red]")
+                    failed_targets.append(str(target_path))
+                    continue
             elif ext == ".env":
                 # Handle .env targets: write flat KEY=VALUE format
                 lines = []
                 for k, v in target_data.items():
-                    # Quote values containing spaces or special chars
+                    # Quote values containing spaces, comments, or special chars.
+                    # Escape embedded double quotes so the value round-trips
+                    # through any POSIX-compatible shell or dotenv parser.
                     str_v = str(v) if v is not None else ""
                     if " " in str_v or "#" in str_v or '"' in str_v:
-                        lines.append(f'{k}="{str_v}"')
+                        escaped = str_v.replace('"', '\\"')
+                        lines.append(f'{k}="{escaped}"')
                     else:
                         lines.append(f"{k}={str_v}")
                 atomic_write_text(target_path, "\n".join(lines) + "\n")
             else:
-                console.print(f"[yellow]Warning: unsupported format '{ext}' for write-back.[/yellow]")
+                console.print(f"[red]Error: unsupported format '{ext}' for write-back of {target_path}.[/red]")
+                failed_targets.append(str(target_path))
                 continue
             console.print(f"[green]Fixed {changes} key(s) in {target_path}[/green]")
+
+    if failed_targets:
+        console.print(
+            f"[red]ERROR: {len(failed_targets)} target(s) could not be fixed: "
+            f"{', '.join(failed_targets)}[/red]"
+        )
+        raise typer.Exit(code=1)
 
 
 @app.command()
