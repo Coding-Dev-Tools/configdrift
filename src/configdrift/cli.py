@@ -345,6 +345,16 @@ def scan(
         raise typer.Exit(code=1)
 
 
+def _has_null_check(val: Any) -> bool:
+    """Recursively check whether a value contains None (for TOML validation)."""
+    if val is None:
+        return True
+    if isinstance(val, dict):
+        return any(_has_null_check(v) for v in val.values())
+    if isinstance(val, (list, tuple)):
+        return any(_has_null_check(v) for v in val)
+    return False
+
 @app.command()
 def fix(
     files: list[str] = _FILES_ARG,
@@ -422,6 +432,15 @@ def fix(
                         cmp_value = "true" if value else "false"
                     elif not isinstance(value, str):
                         cmp_value = str(value)
+                # When fixing a JSON target, normalize temporal baseline values
+                # to ISO strings so the comparison converges (YAML date objects
+                # vs JSON ISO strings would otherwise drift forever despite
+                # identical output).
+                elif _target_ext == ".json":
+                    import datetime as _dt
+                    cmp_value = value.isoformat() if isinstance(value, (_dt.datetime, _dt.date, _dt.time)) else value
+                else:
+                    cmp_value = value
                 if target_data[key] != cmp_value:
                     changes += 1
                     if not dry_run:
@@ -455,11 +474,15 @@ def fix(
                     console.print("[red]Error: tomli-w is required to write TOML files. Install with: pip install tomli-w[/red]")
                     failed_targets.append(str(target_path))
                     continue
-                # Validate null compatibility during dry run so --dry-run
-                # accurately predicts the real-run rejection.
-                has_null = any(v is None for v in target_data.values())
+                # Validate null compatibility during dry run against the
+                # prospectively merged data (target + baseline) so --dry-run
+                # accurately predicts the real-run rejection when baseline
+                # contributes nulls the target doesn't yet have.
+                prospective_toml = dict(target_data)
+                prospective_toml.update(baseline_data)
+                has_null = any(_has_null_check(v) for v in prospective_toml.values())
                 if has_null:
-                    null_keys = [k for k, v in target_data.items() if v is None]
+                    null_keys = [k for k, v in prospective_toml.items() if _has_null_check(v)]
                     console.print(
                         f"[red]Error: TOML does not support null values. "
                         f"Keys with null: {', '.join(null_keys[:5])}[/red]"
@@ -505,6 +528,32 @@ def fix(
                     )
                     failed_targets.append(str(target_path))
                     continue
+            # Validate prospective merged values for JSON targets during dry run
+            # so --dry-run accurately predicts real-run rejection of non-string
+            # keys or unserializable values.
+            if ext == ".json":
+                import json as _dry_json
+                # Build prospective merged data
+                prospective = dict(target_data)
+                prospective.update(baseline_data)
+                # Check for non-string keys in prospective merged data
+                prospective_non_str = [k for k in prospective if not isinstance(k, str)]
+                if prospective_non_str:
+                    console.print(
+                        f"[red]Error: JSON keys must be strings. "
+                        f"Non-string keys after merge: {', '.join(repr(k) for k in prospective_non_str[:5])}[/red]"
+                    )
+                    failed_targets.append(str(target_path))
+                    continue
+                # Test serialization of prospective merged data
+                try:
+                    _dry_json.dumps(prospective, default=_json_null_handler)
+                except (TypeError, ValueError) as _dry_ser_err:
+                    console.print(
+                        f"[red]Error: prospective JSON values not serializable: {_dry_ser_err}[/red]"
+                    )
+                    failed_targets.append(str(target_path))
+                    continue
             elif not is_dotenv and ext not in supported_exts:
                 console.print(f"[red]Error: unsupported format '{ext}' for write-back of {target_path}.[/red]")
                 failed_targets.append(str(target_path))
@@ -513,7 +562,8 @@ def fix(
         else:
             ext = target_path.suffix.lower()
             is_dotenv = (
-                target_path.name == ".env"
+                ext == ".env"
+                or target_path.name == ".env"
                 or target_path.name.startswith(".env.")
             )
             if ext == ".json":
@@ -580,7 +630,14 @@ def fix(
                         continue
                     all_literal_dotted = get_literal_dotted_keys(str(baseline_path)) | get_literal_dotted_keys(str(target_path))
                     nested_toml = _reconstruct_nested(target_data, all_literal_dotted)
-                    atomic_dump_toml(target_path, nested_toml)
+                    try:
+                        atomic_dump_toml(target_path, nested_toml)
+                    except (TypeError, ValueError) as _toml_err:
+                        console.print(
+                            f"[red]Error: cannot serialize target data to TOML: {_toml_err}[/red]"
+                        )
+                        failed_targets.append(str(target_path))
+                        continue
                 except ImportError:
                     console.print("[red]Error: tomli-w is required to write TOML files. Install with: pip install tomli-w[/red]")
                     failed_targets.append(str(target_path))
@@ -617,6 +674,21 @@ def fix(
                     )
                     failed_targets.append(str(target_path))
                     continue
+                # Reject baseline collections that correspond to existing dotenv
+                # keys — dotenv cannot represent collections, so even when the
+                # target already has a scalar for this key, the baseline
+                # collection means drift is unresolvable.
+                baseline_collection_keys = [
+                    k for k, v in baseline_data.items()
+                    if isinstance(v, (dict, list, tuple)) and k in target_data
+                ]
+                if baseline_collection_keys:
+                    console.print(
+                        f"[red]Error: dotenv cannot represent collection values from baseline. "
+                        f"Keys: {', '.join(baseline_collection_keys[:5])}[/red]"
+                    )
+                    failed_targets.append(str(target_path))
+                    continue
                 lines = []
                 for k, v in target_data.items():
                     # Reject non-scalar values that dotenv cannot represent
@@ -633,8 +705,8 @@ def fix(
                     # comments (#), or double quotes. Tabs at the start
                     # or end are stripped by _load_dotenv's .strip(),
                     # so quoting preserves them through round-trip.
-                    if " " in str_v or "\t" in str_v or "#" in str_v or '"' in str_v:
-                        escaped = str_v.replace('"', '\\"')
+                    if " " in str_v or "\t" in str_v or "#" in str_v or '"' in str_v or '\\' in str_v:
+                        escaped = str_v.replace('\\', '\\\\').replace('"', '\\"')
                         lines.append(f'{k}="{escaped}"')
                     else:
                         lines.append(f"{k}={str_v}")
