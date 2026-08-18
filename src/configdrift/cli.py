@@ -27,11 +27,15 @@ from configdrift._atomic import atomic_dump_toml, atomic_dump_yaml, atomic_write
 def _json_null_handler(obj: Any) -> Any:
     """JSON serializer for objects not serializable by default json code.
 
-    Handles None values that were preserved through the flatten cycle
-    so they serialize to JSON null instead of raising TypeError.
+    Handles None values and date/datetime objects that were preserved through
+    the flatten cycle so they serialize correctly instead of raising TypeError.
     """
     if obj is None:
         return None
+    # Handle date/datetime objects from cross-format fixes (YAML/TOML → JSON)
+    import datetime
+    if isinstance(obj, (datetime.date, datetime.datetime)):
+        return obj.isoformat()
     raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
 from configdrift.diff import (
     Severity,
@@ -464,7 +468,11 @@ def fix(
                     # Quote values containing spaces, comments, or special chars.
                     # Escape embedded double quotes so the value round-trips
                     # through any POSIX-compatible shell or dotenv parser.
-                    str_v = str(v) if v is not None else ""
+                    # Convert Python booleans to lowercase for dotenv compatibility
+                    if isinstance(v, bool):
+                        str_v = "true" if v else "false"
+                    else:
+                        str_v = str(v) if v is not None else ""
                     if " " in str_v or "#" in str_v or '"' in str_v:
                         escaped = str_v.replace('"', '\\"')
                         lines.append(f'{k}="{escaped}"')
