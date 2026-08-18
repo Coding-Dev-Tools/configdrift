@@ -175,6 +175,10 @@ def _flatten_nested(d: dict[str, Any], prefix: str = "") -> tuple[dict[str, Any]
             result[full_key] = value
         # Track keys that already contained dots in the ORIGINAL document
         # (not from flattening) so reconstruction can skip splitting them.
-        if not prefix and isinstance(key, str) and "." in key:
-            literal_dotted.add(key)
+        # Check at EVERY nesting level, not just top-level, because nested
+        # mappings can also have literal dotted keys like
+        # {"outer": {"log.level": "info"}} → outer.log.level must stay
+        # as a single key during reconstruction.
+        if isinstance(key, str) and "." in key:
+            literal_dotted.add(full_key)
     return result, literal_dotted

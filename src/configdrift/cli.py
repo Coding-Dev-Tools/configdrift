@@ -40,6 +40,8 @@ def _json_null_handler(obj: Any) -> Any:
         return obj.isoformat()
     if isinstance(obj, datetime.date):
         return obj.isoformat()
+    if isinstance(obj, datetime.time):
+        return obj.isoformat()
     raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
 from configdrift.diff import (
     Severity,
@@ -331,6 +333,9 @@ def fix(
     except Exception as e:
         console.print(f"[red]Error loading baseline config: {e}[/red]")
         raise typer.Exit(code=1) from e
+    if len(files) < 2:
+        console.print("[red]ERROR: fix requires at least one baseline and one target file.[/red]")
+        raise typer.Exit(code=1)
 
 
     # Track targets that could not be fixed so the command returns a
@@ -375,9 +380,11 @@ def fix(
                 cmp_value = value
                 if _target_is_dotenv:
                     if isinstance(value, (dict, list, tuple)):
-                        # Collections cannot be represented in dotenv —
-                        # skip this key so the comparison does not
-                        # stringify the Python repr and drift forever.
+                        # Collections cannot be represented in dotenv.
+                        # Count as drift so we don't silently report
+                        # "no drift" when the baseline has a collection
+                        # that the target cannot hold.
+                        changes += 1
                         continue
                     if value is None:
                         cmp_value = ""
