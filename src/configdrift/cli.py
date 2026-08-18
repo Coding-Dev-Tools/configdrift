@@ -357,6 +357,22 @@ def fix(
             continue
 
         if dry_run:
+            # Validate that the target format supports write-back even in
+            # dry-run mode so --dry-run accurately predicts whether the
+            # real run would succeed.
+            ext = target_path.suffix.lower()
+            supported_exts = {".json", ".yaml", ".yml", ".toml", ".env"}
+            if ext == ".toml":
+                try:
+                    import tomli_w  # noqa: F401
+                except ImportError:
+                    console.print("[red]Error: tomli-w is required to write TOML files. Install with: pip install tomli-w[/red]")
+                    failed_targets.append(str(target_path))
+                    continue
+            elif ext not in supported_exts:
+                console.print(f"[red]Error: unsupported format '{ext}' for write-back of {target_path}.[/red]")
+                failed_targets.append(str(target_path))
+                continue
             console.print(f"[yellow]Dry run: {changes} key(s) would be updated in {target_path}[/yellow]")
         else:
             ext = target_path.suffix.lower()

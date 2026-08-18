@@ -18,9 +18,13 @@ def atomic_write_text(path: Path, text: str, encoding: str = "utf-8") -> None:
 
     Creates a temporary file beside *path*, writes + fsyncs, then
     ``os.replace()`` for an atomic rename.  Preserves the original
-    file's permissions when it already exists.
+    file's permissions when it already exists.  When *path* is a
+    symlink, resolves it first so the referent is updated rather than
+    the link being replaced by a regular file.
     """
-    parent = path.parent
+    # Resolve symlinks so we update the target file, not replace the link.
+    resolved = path.resolve() if path.is_symlink() else path
+    parent = resolved.parent
     parent.mkdir(parents=True, exist_ok=True)
     fd, tmp = tempfile.mkstemp(dir=parent, suffix=".tmp")
     try:
@@ -29,13 +33,13 @@ def atomic_write_text(path: Path, text: str, encoding: str = "utf-8") -> None:
             fh.flush()
             os.fsync(fh.fileno())
         # Preserve target permissions during atomic replacement
-        if path.exists():
+        if resolved.exists():
             try:
-                st = path.stat()
+                st = resolved.stat()
                 os.chmod(tmp, st.st_mode)
             except OSError:
                 pass
-        os.replace(tmp, path)
+        os.replace(tmp, resolved)
     except BaseException:
         # Clean up temp file on any failure
         with contextlib.suppress(OSError):
@@ -47,8 +51,11 @@ def atomic_write_bytes(path: Path, data: bytes) -> None:
     """Atomically write *data* to *path*.
 
     Preserves the original file's permissions when it already exists.
+    When *path* is a symlink, resolves it first so the referent is
+    updated rather than the link being replaced by a regular file.
     """
-    parent = path.parent
+    resolved = path.resolve() if path.is_symlink() else path
+    parent = resolved.parent
     parent.mkdir(parents=True, exist_ok=True)
     fd, tmp = tempfile.mkstemp(dir=parent, suffix=".tmp")
     try:
@@ -57,13 +64,13 @@ def atomic_write_bytes(path: Path, data: bytes) -> None:
             fh.flush()
             os.fsync(fh.fileno())
         # Preserve target permissions during atomic replacement
-        if path.exists():
+        if resolved.exists():
             try:
-                st = path.stat()
+                st = resolved.stat()
                 os.chmod(tmp, st.st_mode)
             except OSError:
                 pass
-        os.replace(tmp, path)
+        os.replace(tmp, resolved)
     except BaseException:
         with contextlib.suppress(OSError):
             os.unlink(tmp)
