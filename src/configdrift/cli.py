@@ -48,33 +48,26 @@ def _json_null_handler(obj: Any) -> Any:
     raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
 
 
-def _reconstruct_nested(flat_data: dict[str, Any], literal_dotted: dict[str, int]) -> dict[str, Any]:
+def _reconstruct_nested(flat_data: dict[str, Any], literal_dotted: dict[str, tuple[str, ...]]) -> dict[str, Any]:
     """Rebuild nested dict from flat keys, respecting literal dotted keys.
 
-    ``literal_dotted`` maps each flattened key whose leaf already contained
-    a dot in the source document to its parent nesting depth.  For example,
-    ``{"outer.log.level": 1}`` means split on the first dot to produce
-    parent ``outer``, then keep ``log.level`` as the leaf key.
+    ``literal_dotted`` maps each flattened key whose reconstruction path
+    differs from naive dot-splitting to the tuple of original key segments.
+    For example, ``{"service.config.host": ("service.config", "host")}``
+    means nest ``host`` under ``service.config`` (a literal dotted key).
     """
     nested: dict[str, Any] = {}
     for k, v in flat_data.items():
         if "." not in k:
             nested[k] = v
         elif k in literal_dotted:
-            depth = literal_dotted[k]
-            if depth == 0:
-                # Top-level literal dotted key — no parent nesting
-                nested[k] = v
-            else:
-                parts = k.split(".")
-                parent_parts = parts[:depth]
-                leaf = ".".join(parts[depth:])
-                d = nested
-                for part in parent_parts:
-                    if not isinstance(d.get(part), dict):
-                        d[part] = {}
-                    d = d[part]
-                d[leaf] = v
+            parts = literal_dotted[k]
+            d = nested
+            for part in parts[:-1]:
+                if not isinstance(d.get(part), dict):
+                    d[part] = {}
+                d = d[part]
+            d[parts[-1]] = v
         else:
             # Regular flattened key — split all dots for nesting
             parts = k.split(".")
@@ -547,7 +540,15 @@ def fix(
                 # than being re-split into nested levels.
                 all_literal_dotted = get_literal_dotted_keys(str(baseline_path)) | get_literal_dotted_keys(str(target_path))
                 nested = _reconstruct_nested(target_data, all_literal_dotted)
-                atomic_write_text(target_path, _json.dumps(nested, indent=2, default=_json_null_handler) + "\n")
+                try:
+                    _payload = _json.dumps(nested, indent=2, default=_json_null_handler) + "\n"
+                except (TypeError, ValueError) as _ser_err:
+                    console.print(
+                        f"[red]Error: cannot serialize target data to JSON: {_ser_err}[/red]"
+                    )
+                    failed_targets.append(str(target_path))
+                    continue
+                atomic_write_text(target_path, _payload)
             elif ext in (".yaml", ".yml"):
                 # Reconstruct nested structure from flat keys for YAML output
                 all_literal_dotted = get_literal_dotted_keys(str(baseline_path)) | get_literal_dotted_keys(str(target_path))
