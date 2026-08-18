@@ -509,10 +509,18 @@ def fix(
 
                     # Reject None values before building the TOML dict —
                     # TOML has no null representation, so tomli_w would
-                    # raise TypeError on serialization.
-                    has_null = any(v is None for v in target_data.values())
-                    if has_null:
-                        null_keys = [k for k, v in target_data.items() if v is None]
+                    # raise TypeError on serialization. Check recursively
+                    # through lists and nested dicts for embedded nulls.
+                    def _has_null(val: Any) -> bool:
+                        if val is None:
+                            return True
+                        if isinstance(val, dict):
+                            return any(_has_null(v) for v in val.values())
+                        if isinstance(val, (list, tuple)):
+                            return any(_has_null(v) for v in val)
+                        return False
+                    null_keys = [k for k, v in target_data.items() if _has_null(v)]
+                    if null_keys:
                         console.print(
                             f"[red]Error: TOML does not support null values. "
                             f"Keys with null: {', '.join(null_keys[:5])}[/red]"
@@ -553,17 +561,19 @@ def fix(
                     )
                     failed_targets.append(str(target_path))
                     continue
-                # Reject multiline values — newlines would corrupt the
-                # dotenv file by splitting a single KEY=VALUE across
-                # multiple physical lines.
+                # Reject multiline values — newlines (\n) and carriage
+                # returns (\r) would corrupt the dotenv file by splitting
+                # a single KEY=VALUE across multiple physical lines.
+                # Readers using universal-newline handling treat \r as a
+                # line boundary, truncating the setting.
                 multiline_keys = [
                     k for k, v in target_data.items()
-                    if isinstance(v, str) and '\n' in v
+                    if isinstance(v, str) and ('\n' in v or '\r' in v)
                 ]
                 if multiline_keys:
                     console.print(
-                        f"[red]Error: dotenv values must not contain newlines. "
-                        f"Keys with newlines: {', '.join(multiline_keys[:5])}[/red]"
+                        f"[red]Error: dotenv values must not contain newlines or "
+                        f"carriage returns. Keys affected: {', '.join(multiline_keys[:5])}[/red]"
                     )
                     failed_targets.append(str(target_path))
                     continue

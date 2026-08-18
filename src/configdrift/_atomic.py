@@ -32,16 +32,22 @@ def atomic_write_text(path: Path, text: str, encoding: str = "utf-8") -> None:
             fh.write(text)
             fh.flush()
             os.fsync(fh.fileno())
-        # Preserve target permissions and ownership during atomic replacement
+        # Preserve target permissions and ownership during atomic replacement.
+        # If ownership restoration fails (e.g. unprivileged caller), abort
+        # the replacement rather than installing a caller-owned file that
+        # the application cannot read.
         if resolved.exists():
+            st = resolved.stat()
+            os.chmod(tmp, st.st_mode)
             try:
-                st = resolved.stat()
-                os.chmod(tmp, st.st_mode)
-                # Preserve owner so application accounts can still read the
-                # config after a privileged deployment user runs fix.
                 os.chown(tmp, st.st_uid, st.st_gid)
-            except OSError:
-                pass
+            except OSError as chown_err:
+                with contextlib.suppress(OSError):
+                    os.unlink(tmp)
+                raise OSError(
+                    f"Cannot preserve ownership of {resolved} "
+                    f"(uid={st.st_uid}, gid={st.st_gid}): {chown_err}"
+                ) from chown_err
         os.replace(tmp, resolved)
     except BaseException:
         # Clean up temp file on any failure
@@ -66,14 +72,21 @@ def atomic_write_bytes(path: Path, data: bytes) -> None:
             fh.write(data)
             fh.flush()
             os.fsync(fh.fileno())
-        # Preserve target permissions and ownership during atomic replacement
+        # Preserve target permissions and ownership during atomic replacement.
+        # If ownership restoration fails, abort rather than installing a
+        # caller-owned file the application cannot read.
         if resolved.exists():
+            st = resolved.stat()
+            os.chmod(tmp, st.st_mode)
             try:
-                st = resolved.stat()
-                os.chmod(tmp, st.st_mode)
                 os.chown(tmp, st.st_uid, st.st_gid)
-            except OSError:
-                pass
+            except OSError as chown_err:
+                with contextlib.suppress(OSError):
+                    os.unlink(tmp)
+                raise OSError(
+                    f"Cannot preserve ownership of {resolved} "
+                    f"(uid={st.st_uid}, gid={st.st_gid}): {chown_err}"
+                ) from chown_err
         os.replace(tmp, resolved)
     except BaseException:
         with contextlib.suppress(OSError):
