@@ -43,6 +43,44 @@ def _json_null_handler(obj: Any) -> Any:
     if isinstance(obj, datetime.time):
         return obj.isoformat()
     raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
+
+def _reconstruct_nested(flat_data: dict[str, Any], literal_dotted: dict[str, int]) -> dict[str, Any]:
+    """Rebuild nested dict from flat keys, respecting literal dotted keys.
+
+    ``literal_dotted`` maps each flattened key whose leaf already contained
+    a dot in the source document to its parent nesting depth.  For example,
+    ``{"outer.log.level": 1}`` means split on the first dot to produce
+    parent ``outer``, then keep ``log.level`` as the leaf key.
+    """
+    nested: dict[str, Any] = {}
+    for k, v in flat_data.items():
+        if "." not in k:
+            nested[k] = v
+        elif k in literal_dotted:
+            depth = literal_dotted[k]
+            if depth == 0:
+                # Top-level literal dotted key — no parent nesting
+                nested[k] = v
+            else:
+                parts = k.split(".")
+                parent_parts = parts[:depth]
+                leaf = ".".join(parts[depth:])
+                d = nested
+                for part in parent_parts:
+                    if not isinstance(d.get(part), dict):
+                        d[part] = {}
+                    d = d[part]
+                d[leaf] = v
+        else:
+            # Regular flattened key — split all dots for nesting
+            parts = k.split(".")
+            d = nested
+            for part in parts[:-1]:
+                if not isinstance(d.get(part), dict):
+                    d[part] = {}
+                d = d[part]
+            d[parts[-1]] = v
+    return nested
 from configdrift.diff import (
     Severity,
     diff_environments,
@@ -462,6 +500,19 @@ def fix(
                     )
                     failed_targets.append(str(target_path))
                     continue
+                # Validate dotenv collection incompatibility during dry run
+                # so --dry-run accurately predicts real-run rejection.
+                bad_collections = [
+                    k for k, v in baseline_data.items()
+                    if isinstance(v, (dict, list, tuple))
+                ]
+                if bad_collections:
+                    console.print(
+                        f"[red]Error: dotenv cannot represent collection values. "
+                        f"Keys with collections: {', '.join(bad_collections[:5])}[/red]"
+                    )
+                    failed_targets.append(str(target_path))
+                    continue
             elif not is_dotenv and ext not in supported_exts:
                 console.print(f"[red]Error: unsupported format '{ext}' for write-back of {target_path}.[/red]")
                 failed_targets.append(str(target_path))
@@ -492,39 +543,16 @@ def fix(
                     continue
 
                 # Preserve nested JSON structure: rebuild from flat keys.
-                # Literal dotted keys (keys that already contain '.') in the
-                # source document are kept as single mapping keys rather
+                # Literal dotted keys (keys that already contain '.' in the
+                # source document) are kept as single mapping keys rather
                 # than being re-split into nested levels.
-                # Merge literal dotted keys from both baseline and target
                 all_literal_dotted = get_literal_dotted_keys(str(baseline_path)) | get_literal_dotted_keys(str(target_path))
-                nested: dict[str, Any] = {}
-                for k, v in target_data.items():
-                    if "." not in k or k in all_literal_dotted:
-                        nested[k] = v
-                    else:
-                        parts = k.split(".")
-                        d = nested
-                        for part in parts[:-1]:
-                            if not isinstance(d.get(part), dict):
-                                d[part] = {}
-                            d = d[part]
-                        d[parts[-1]] = v
+                nested = _reconstruct_nested(target_data, all_literal_dotted)
                 atomic_write_text(target_path, _json.dumps(nested, indent=2, default=_json_null_handler) + "\n")
             elif ext in (".yaml", ".yml"):
                 # Reconstruct nested structure from flat keys for YAML output
                 all_literal_dotted = get_literal_dotted_keys(str(baseline_path)) | get_literal_dotted_keys(str(target_path))
-                nested: dict[str, Any] = {}
-                for k, v in target_data.items():
-                    if "." not in k or k in all_literal_dotted:
-                        nested[k] = v
-                    else:
-                        parts = k.split(".")
-                        d = nested
-                        for part in parts[:-1]:
-                            if not isinstance(d.get(part), dict):
-                                d[part] = {}
-                            d = d[part]
-                        d[parts[-1]] = v
+                nested = _reconstruct_nested(target_data, all_literal_dotted)
                 atomic_dump_yaml(target_path, nested, default_flow_style=False, sort_keys=False)
             elif ext == ".toml":
                 try:
@@ -551,18 +579,7 @@ def fix(
                         failed_targets.append(str(target_path))
                         continue
                     all_literal_dotted = get_literal_dotted_keys(str(baseline_path)) | get_literal_dotted_keys(str(target_path))
-                    nested_toml: dict[str, Any] = {}
-                    for k, v in target_data.items():
-                        if "." not in k or k in all_literal_dotted:
-                            nested_toml[k] = v
-                        else:
-                            parts = k.split(".")
-                            d = nested_toml
-                            for part in parts[:-1]:
-                                if not isinstance(d.get(part), dict):
-                                    d[part] = {}
-                                d = d[part]
-                            d[parts[-1]] = v
+                    nested_toml = _reconstruct_nested(target_data, all_literal_dotted)
                     atomic_dump_toml(target_path, nested_toml)
                 except ImportError:
                     console.print("[red]Error: tomli-w is required to write TOML files. Install with: pip install tomli-w[/red]")

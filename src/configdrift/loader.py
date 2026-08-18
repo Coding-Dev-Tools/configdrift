@@ -6,12 +6,19 @@ import re
 from pathlib import Path
 from typing import Any
 
-_literal_dotted_cache: dict[str, set[str]] = {}
+_literal_dotted_cache: dict[str, dict[str, int]] = {}
 
 
-def get_literal_dotted_keys(path: str) -> set[str]:
-    """Retrieve literal dotted keys stored by the most recent load_file(path) call."""
-    return _literal_dotted_cache.get(str(Path(path).resolve()), set())
+def get_literal_dotted_keys(path: str) -> dict[str, int]:
+    """Retrieve literal dotted keys stored by the most recent load_file(path) call.
+
+    Returns a dict mapping each flattened key that contained a literal dot
+    in the source document to its parent nesting depth (number of real
+    nesting levels above the literal-dotted leaf).  For example,
+    ``{"outer.log.level": 1}`` means split on the first dot to get the
+    parent ``outer``, then keep ``log.level`` as the leaf key.
+    """
+    return _literal_dotted_cache.get(str(Path(path).resolve()), {})
 
 
 _toml = importlib.import_module("tomllib" if __import__("sys").version_info >= (3, 11) else "tomli")
@@ -42,7 +49,7 @@ def load_file(path: str) -> dict[str, Any]:
         _literal_dotted_cache[resolved] = literal
         return result
     elif ext == ".env":
-        _literal_dotted_cache[resolved] = set()
+        _literal_dotted_cache[resolved] = {}
         return _load_dotenv(p)
     else:
         for loader in [_load_yaml, _load_json, _load_toml]:
@@ -54,14 +61,14 @@ def load_file(path: str) -> dict[str, Any]:
                 continue
         # Last resort: try dotenv
         try:
-            _literal_dotted_cache[resolved] = set()
+            _literal_dotted_cache[resolved] = {}
             return _load_dotenv(p)
         except Exception:
             pass
         raise ValueError(f"Unsupported file format: {ext}") from None
 
 
-def _load_yaml(path: Path) -> tuple[dict[str, Any], set[str]]:
+def _load_yaml(path: Path) -> tuple[dict[str, Any], dict[str, int]]:
     import yaml
 
     with open(path, encoding="utf-8") as f:
@@ -71,7 +78,7 @@ def _load_yaml(path: Path) -> tuple[dict[str, Any], set[str]]:
     return _flatten_nested(data)
 
 
-def _load_json(path: Path) -> tuple[dict[str, Any], set[str]]:
+def _load_json(path: Path) -> tuple[dict[str, Any], dict[str, int]]:
     with open(path, encoding="utf-8") as f:
         data = json.load(f)
     if not isinstance(data, dict):
@@ -79,7 +86,7 @@ def _load_json(path: Path) -> tuple[dict[str, Any], set[str]]:
     return _flatten_nested(data)
 
 
-def _load_toml(path: Path) -> tuple[dict[str, Any], set[str]]:
+def _load_toml(path: Path) -> tuple[dict[str, Any], dict[str, int]]:
     with open(path, "rb") as f:
         data = _toml.load(f)
     return _flatten_nested(data)
@@ -140,7 +147,7 @@ def _load_dotenv(path: Path) -> dict[str, Any]:
     return data
 
 
-def _flatten_nested(d: dict[str, Any], prefix: str = "") -> tuple[dict[str, Any], set[str]]:
+def _flatten_nested(d: dict[str, Any], prefix: str = "") -> tuple[dict[str, Any], dict[str, int]]:
     """Flatten nested dicts into dot-separated keys.
 
     Preserves non-dict collection values (lists, tuples) and scalar values
@@ -148,12 +155,21 @@ def _flatten_nested(d: dict[str, Any], prefix: str = "") -> tuple[dict[str, Any]
     the source document are kept literal — they are never re-split on
     ``.`` during reconstruction.
 
-    Returns a tuple of (flat_dict, literal_dotted_keys) where
-    literal_dotted_keys is the set of top-level keys in the original
-    document that already contained dots.
+    Returns a tuple of ``(flat_dict, literal_dotted)`` where
+    ``literal_dotted`` is a dict mapping each flattened key whose *leaf*
+    already contained a dot in the source document to its parent nesting
+    depth (the number of real dict levels above the literal-dotted leaf).
+    A top-level literal dotted key has depth ``0``; a literal dotted key
+    under ``{"outer": {"log.level": "x"}}`` flattens to ``"outer.log.level"``
+    with depth ``1`` so reconstruction can rebuild the ``outer`` parent
+    while keeping ``log.level`` as a single leaf key.
     """
     result: dict[str, Any] = {}
-    literal_dotted: set[str] = set()
+    literal_dotted: dict[str, int] = {}
+    # Parent depth for keys beneath this prefix: number of dict levels
+    # already traversed. Empty prefix = top level (0); each dot in a
+    # non-empty prefix represents one level.
+    parent_depth = 0 if not prefix else prefix.count(".") + 1
     for key, value in d.items():
         full_key = f"{prefix}.{key}" if prefix else key
         if isinstance(value, dict):
@@ -173,12 +189,10 @@ def _flatten_nested(d: dict[str, Any], prefix: str = "") -> tuple[dict[str, Any]
         else:
             # Preserve lists, tuples, ints, floats, bools, and strings as-is
             result[full_key] = value
-        # Track keys that already contained dots in the ORIGINAL document
-        # (not from flattening) so reconstruction can skip splitting them.
-        # Check at EVERY nesting level, not just top-level, because nested
-        # mappings can also have literal dotted keys like
-        # {"outer": {"log.level": "info"}} → outer.log.level must stay
-        # as a single key during reconstruction.
+        # Track keys whose LEAF already contained a dot in the ORIGINAL
+        # document (not from flattening) so reconstruction can keep the
+        # leaf as a single mapping key. Record at every nesting level
+        # because nested mappings can also carry literal dotted keys.
         if isinstance(key, str) and "." in key:
-            literal_dotted.add(full_key)
+            literal_dotted[full_key] = parent_depth
     return result, literal_dotted

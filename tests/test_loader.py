@@ -43,7 +43,7 @@ class TestFlattenNested:
     def test_empty_dict(self):
         result, literal = _flatten_nested({})
         assert result == {}
-        assert literal == set()
+        assert literal == {}
 
     def test_none_value_converted_to_empty_string(self):
         data = {"key": None}
