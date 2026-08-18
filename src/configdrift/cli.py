@@ -310,67 +310,110 @@ def fix(
         raise typer.Exit(code=1)
 
     baseline_path = Path(files[0])
-    target_path = Path(files[1])
-
     if not baseline_path.exists():
         console.print(f"[red]ERROR: Baseline file not found: {baseline_path}[/red]")
-        raise typer.Exit(code=1)
-    if not target_path.exists():
-        console.print(f"[red]ERROR: Target file not found: {target_path}[/red]")
         raise typer.Exit(code=1)
 
     try:
         baseline_data = load_file(str(baseline_path))
-        target_data = load_file(str(target_path))
     except Exception as e:
-        console.print(f"[red]Error loading configs: {e}[/red]")
+        console.print(f"[red]Error loading baseline config: {e}[/red]")
         raise typer.Exit(code=1) from e
 
-    changes = 0
-    for key, value in baseline_data.items():
-        old = target_data.get(key)
-        if old != value:
-            changes += 1
-            if not dry_run:
-                target_data[key] = value
+    # Process every supplied target file (not just files[1])
+    for target_file in files[1:]:
+        target_path = Path(target_file)
+        if not target_path.exists():
+            console.print(f"[red]ERROR: Target file not found: {target_path}[/red]")
+            continue
 
-    if dry_run:
-        console.print(f"[yellow]Dry run: {changes} key(s) would be updated in {target_path}[/yellow]")
-    else:
-        ext = target_path.suffix.lower()
-        if ext == ".json":
-            import json as _json
+        try:
+            target_data = load_file(str(target_path))
+        except Exception as e:
+            console.print(f"[red]Error loading target config {target_path}: {e}[/red]")
+            continue
 
-            atomic_write_text(target_path, _json.dumps(target_data, indent=2) + "\n")
-        elif ext in (".yaml", ".yml"):
-            # Reconstruct nested structure from flat keys for YAML output
-            nested: dict[str, Any] = {}
-            for k, v in target_data.items():
-                parts = k.split(".")
-                d = nested
-                for part in parts[:-1]:
-                    d = d.setdefault(part, {})
-                d[parts[-1]] = v
-            atomic_dump_yaml(target_path, nested, default_flow_style=False, sort_keys=False)
-        elif ext == ".toml":
-            try:
-                import tomli_w  # noqa: F401
+        changes = 0
+        for key, value in baseline_data.items():
+            old = target_data.get(key)
+            if old != value:
+                changes += 1
+                if not dry_run:
+                    target_data[key] = value
 
-                nested_toml: dict[str, Any] = {}
+        # Skip write-back when no changes detected
+        if changes == 0:
+            if dry_run:
+                console.print(f"[yellow]Dry run: no changes needed in {target_path}[/yellow]")
+            else:
+                console.print(f"[green]No drift detected in {target_path}[/green]")
+            continue
+
+        if dry_run:
+            console.print(f"[yellow]Dry run: {changes} key(s) would be updated in {target_path}[/yellow]")
+        else:
+            ext = target_path.suffix.lower()
+            if ext == ".json":
+                import json as _json
+
+                # Preserve nested JSON structure: rebuild from flat keys
+                nested_json: dict[str, Any] = {}
                 for k, v in target_data.items():
                     parts = k.split(".")
-                    d = nested_toml
+                    d = nested_json
                     for part in parts[:-1]:
-                        d = d.setdefault(part, {})
+                        # Handle scalar-to-mapping drift: replace scalar parents with dict
+                        if not isinstance(d.get(part), dict):
+                            d[part] = {}
+                        d = d[part]
                     d[parts[-1]] = v
-                atomic_dump_toml(target_path, nested_toml)
-            except ImportError:
-                console.print("[yellow]Warning: tomli-w not installed; writing raw TOML not supported.[/yellow]")
-                raise typer.Exit(code=1) from None
-        else:
-            console.print(f"[yellow]Warning: unsupported format '{ext}' for write-back.[/yellow]")
-            raise typer.Exit(code=1)
-        console.print(f"[green]Fixed {changes} key(s) in {target_path}[/green]")
+                atomic_write_text(target_path, _json.dumps(nested_json, indent=2) + "\n")
+            elif ext in (".yaml", ".yml"):
+                # Reconstruct nested structure from flat keys for YAML output
+                nested: dict[str, Any] = {}
+                for k, v in target_data.items():
+                    parts = k.split(".")
+                    d = nested
+                    for part in parts[:-1]:
+                        # Handle scalar-to-mapping drift: replace scalar parents with dict
+                        if not isinstance(d.get(part), dict):
+                            d[part] = {}
+                        d = d[part]
+                    d[parts[-1]] = v
+                atomic_dump_yaml(target_path, nested, default_flow_style=False, sort_keys=False)
+            elif ext == ".toml":
+                try:
+                    import tomli_w  # noqa: F401
+
+                    nested_toml: dict[str, Any] = {}
+                    for k, v in target_data.items():
+                        parts = k.split(".")
+                        d = nested_toml
+                        for part in parts[:-1]:
+                            # Handle scalar-to-mapping drift: replace scalar parents with dict
+                            if not isinstance(d.get(part), dict):
+                                d[part] = {}
+                            d = d[part]
+                        d[parts[-1]] = v
+                    atomic_dump_toml(target_path, nested_toml)
+                except ImportError:
+                    console.print("[yellow]Warning: tomli-w not installed; writing raw TOML not supported.[/yellow]")
+                    raise typer.Exit(code=1) from None
+            elif ext == ".env":
+                # Handle .env targets: write flat KEY=VALUE format
+                lines = []
+                for k, v in target_data.items():
+                    # Quote values containing spaces or special chars
+                    str_v = str(v) if v is not None else ""
+                    if " " in str_v or "#" in str_v or '"' in str_v:
+                        lines.append(f'{k}="{str_v}"')
+                    else:
+                        lines.append(f"{k}={str_v}")
+                atomic_write_text(target_path, "\n".join(lines) + "\n")
+            else:
+                console.print(f"[yellow]Warning: unsupported format '{ext}' for write-back.[/yellow]")
+                continue
+            console.print(f"[green]Fixed {changes} key(s) in {target_path}[/green]")
 
 
 @app.command()

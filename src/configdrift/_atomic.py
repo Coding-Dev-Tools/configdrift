@@ -17,7 +17,8 @@ def atomic_write_text(path: Path, text: str, encoding: str = "utf-8") -> None:
     """Atomically write *text* to *path*.
 
     Creates a temporary file beside *path*, writes + fsyncs, then
-    ``os.replace()`` for an atomic rename.
+    ``os.replace()`` for an atomic rename.  Preserves the original
+    file's permissions when it already exists.
     """
     parent = path.parent
     parent.mkdir(parents=True, exist_ok=True)
@@ -27,6 +28,13 @@ def atomic_write_text(path: Path, text: str, encoding: str = "utf-8") -> None:
             fh.write(text)
             fh.flush()
             os.fsync(fh.fileno())
+        # Preserve target permissions during atomic replacement
+        if path.exists():
+            try:
+                st = path.stat()
+                os.chmod(tmp, st.st_mode)
+            except OSError:
+                pass
         os.replace(tmp, path)
     except BaseException:
         # Clean up temp file on any failure
@@ -36,7 +44,10 @@ def atomic_write_text(path: Path, text: str, encoding: str = "utf-8") -> None:
 
 
 def atomic_write_bytes(path: Path, data: bytes) -> None:
-    """Atomically write *data* to *path*."""
+    """Atomically write *data* to *path*.
+
+    Preserves the original file's permissions when it already exists.
+    """
     parent = path.parent
     parent.mkdir(parents=True, exist_ok=True)
     fd, tmp = tempfile.mkstemp(dir=parent, suffix=".tmp")
@@ -45,6 +56,13 @@ def atomic_write_bytes(path: Path, data: bytes) -> None:
             fh.write(data)
             fh.flush()
             os.fsync(fh.fileno())
+        # Preserve target permissions during atomic replacement
+        if path.exists():
+            try:
+                st = path.stat()
+                os.chmod(tmp, st.st_mode)
+            except OSError:
+                pass
         os.replace(tmp, path)
     except BaseException:
         with contextlib.suppress(OSError):
