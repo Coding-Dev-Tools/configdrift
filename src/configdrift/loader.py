@@ -113,9 +113,17 @@ def _flatten_nested(d: dict[str, Any], prefix: str = "") -> dict[str, Any]:
     for key, value in d.items():
         full_key = f"{prefix}.{key}" if prefix else key
         if isinstance(value, dict):
-            result.update(_flatten_nested(value, full_key))
+            if not value:
+                # Preserve empty mappings so reconstruction doesn't
+                # silently drop them when other keys need fixing.
+                result[full_key] = {}
+            else:
+                result.update(_flatten_nested(value, full_key))
         elif value is None:
-            result[full_key] = ""
+            # Preserve null as None so the fix cycle can distinguish
+            # "baseline is null" from "baseline is empty string".
+            # Writers handle None appropriately per format.
+            result[full_key] = None
         else:
             # Preserve lists, tuples, ints, floats, bools, and strings as-is
             result[full_key] = value

@@ -23,6 +23,16 @@ except ImportError:
 
 from configdrift import __version__
 from configdrift._atomic import atomic_dump_toml, atomic_dump_yaml, atomic_write_text
+
+def _json_null_handler(obj: Any) -> Any:
+    """JSON serializer for objects not serializable by default json code.
+
+    Handles None values that were preserved through the flatten cycle
+    so they serialize to JSON null instead of raising TypeError.
+    """
+    if obj is None:
+        return None
+    raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
 from configdrift.diff import (
     Severity,
     diff_environments,
@@ -361,6 +371,8 @@ def fix(
             # dry-run mode so --dry-run accurately predicts whether the
             # real run would succeed.
             ext = target_path.suffix.lower()
+            # .env files (literal name, no extension) need name-based detection
+            is_dotenv = ext == ".env" or target_path.name == ".env"
             supported_exts = {".json", ".yaml", ".yml", ".toml", ".env"}
             if ext == ".toml":
                 try:
@@ -369,13 +381,14 @@ def fix(
                     console.print("[red]Error: tomli-w is required to write TOML files. Install with: pip install tomli-w[/red]")
                     failed_targets.append(str(target_path))
                     continue
-            elif ext not in supported_exts:
+            elif not is_dotenv and ext not in supported_exts:
                 console.print(f"[red]Error: unsupported format '{ext}' for write-back of {target_path}.[/red]")
                 failed_targets.append(str(target_path))
                 continue
             console.print(f"[yellow]Dry run: {changes} key(s) would be updated in {target_path}[/yellow]")
         else:
             ext = target_path.suffix.lower()
+            is_dotenv = ext == ".env" or target_path.name == ".env"
             if ext == ".json":
                 import json as _json
 
@@ -395,7 +408,7 @@ def fix(
                                 d[part] = {}
                             d = d[part]
                         d[parts[-1]] = v
-                atomic_write_text(target_path, _json.dumps(nested_json, indent=2) + "\n")
+                atomic_write_text(target_path, _json.dumps(nested_json, indent=2, default=_json_null_handler) + "\n")
             elif ext in (".yaml", ".yml"):
                 # Reconstruct nested structure from flat keys for YAML output
                 nested: dict[str, Any] = {}
@@ -432,7 +445,7 @@ def fix(
                     console.print("[red]Error: tomli-w is required to write TOML files. Install with: pip install tomli-w[/red]")
                     failed_targets.append(str(target_path))
                     continue
-            elif ext == ".env":
+            elif is_dotenv:
                 # Handle .env targets: write flat KEY=VALUE format
                 lines = []
                 for k, v in target_data.items():
