@@ -374,12 +374,15 @@ def fix(
                 if not dry_run:
                     target_data[key] = value
             else:
-                # When fixing a dotenv target, normalize boolean baseline
-                # values to their lowercase string form so the comparison
-                # converges (True vs "true" would otherwise keep drifting).
+                # When fixing a dotenv target, normalize all scalar baseline
+                # values to their string form so the comparison converges
+                # (8080 vs "8080" and True vs "true" would otherwise keep drifting).
                 cmp_value = value
-                if _target_is_dotenv and isinstance(value, bool):
-                    cmp_value = "true" if value else "false"
+                if _target_is_dotenv:
+                    if isinstance(value, bool):
+                        cmp_value = "true" if value else "false"
+                    elif value is not None and not isinstance(value, str):
+                        cmp_value = str(value)
                 if target_data[key] != cmp_value:
                     changes += 1
                     if not dry_run:
@@ -442,13 +445,15 @@ def fix(
                 # Literal dotted keys (keys that already contain '.') in the
                 # source document are kept as single mapping keys rather
                 # than being re-split into nested levels.
-                nested_json: dict[str, Any] = {}
+                nested: dict[str, Any] = {}
                 for k, v in target_data.items():
-                    if "." not in k:
-                        nested_json[k] = v
+                    # Preserve non-string keys (valid in YAML) without
+                    # applying string operations that would raise TypeError.
+                    if not isinstance(k, str) or "." not in k:
+                        nested[k] = v
                     else:
                         parts = k.split(".")
-                        d = nested_json
+                        d = nested
                         for part in parts[:-1]:
                             if not isinstance(d.get(part), dict):
                                 d[part] = {}
