@@ -51,8 +51,7 @@ def atomic_write_text(path: Path, text: str, encoding: str = "utf-8") -> None:
                 with contextlib.suppress(OSError):
                     os.unlink(tmp)
                 raise OSError(
-                    f"Cannot preserve ownership of {resolved} "
-                    f"(uid={st.st_uid}, gid={st.st_gid}): {chown_err}"
+                    f"Cannot preserve ownership of {resolved} (uid={st.st_uid}, gid={st.st_gid}): {chown_err}"
                 ) from chown_err
         os.replace(tmp, resolved)
     except BaseException:
@@ -96,8 +95,7 @@ def atomic_write_bytes(path: Path, data: bytes) -> None:
                 with contextlib.suppress(OSError):
                     os.unlink(tmp)
                 raise OSError(
-                    f"Cannot preserve ownership of {resolved} "
-                    f"(uid={st.st_uid}, gid={st.st_gid}): {chown_err}"
+                    f"Cannot preserve ownership of {resolved} (uid={st.st_uid}, gid={st.st_gid}): {chown_err}"
                 ) from chown_err
         os.replace(tmp, resolved)
     except BaseException:
