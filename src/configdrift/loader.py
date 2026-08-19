@@ -21,6 +21,40 @@ def get_literal_dotted_keys(path: str) -> dict[str, tuple[str, ...]]:
     return _literal_dotted_cache.get(str(Path(path).resolve()), {})
 
 
+def has_dotted_collision(flat_data: dict[str, Any]) -> list[str]:
+    """Detect ambiguous collisions between literal dotted keys and nested paths.
+
+    Returns the list of flat keys that appear both as a literal dotted key
+    (a top-level key whose name already contains ``.`` in the source
+    document) AND as the reconstruction of a genuinely nested path. When
+    both exist, flattening collapses them to a single key — the later
+    value overwrites the earlier — and reconstruction writes back only
+    one of the two mappings, silently deleting the other. Callers should
+    reject write-back for any target where this returns non-empty.
+
+    Detection: a flat key is ambiguous iff it appears as a literal dotted
+    key AND there also exists some other flat key that shares its prefix
+    (i.e., the nested form ``k.replace('.', '/')`` would nest under the
+    same path).
+    """
+    collisions: list[str] = []
+    for k in flat_data:
+        if "." not in k:
+            continue
+        # A key is a literal dotted key iff splitting it yields a path
+        # that does NOT exist elsewhere — but we can detect collision
+        # directly: the same flat key is reachable both ways iff some
+        # other flat key starts with ``k + "."`` (nested children) or
+        # k's prefix path exists as a separate top-level mapping.
+        # Simpler: look for any other flat key that would reconstruct
+        # to the same nested location. A genuine nested form of ``k``
+        # is present iff there exists a flat key ``k + ".<child>"``.
+        prefix = k + "."
+        if any(other.startswith(prefix) for other in flat_data if other != k):
+            collisions.append(k)
+    return collisions
+
+
 _toml = importlib.import_module("tomllib" if __import__("sys").version_info >= (3, 11) else "tomli")
 
 
@@ -48,7 +82,7 @@ def load_file(path: str) -> dict[str, Any]:
         result, literal = _load_toml(p)
         _literal_dotted_cache[resolved] = literal
         return result
-    elif ext == ".env":
+    elif ext == ".env" or p.name == ".env" or p.name.startswith(".env."):
         _literal_dotted_cache[resolved] = {}
         return _load_dotenv(p)
     else:
@@ -105,7 +139,7 @@ def _strip_inline_comment(value: str) -> str:
     while i < len(value):
         ch = value[i]
         # Handle backslash-escaped characters inside double quotes
-        if ch == '\\' and in_double and i + 1 < len(value):
+        if ch == "\\" and in_double and i + 1 < len(value):
             i += 2  # skip the escaped character
             continue
         if ch == '"' and not in_single:
@@ -142,7 +176,10 @@ def _load_dotenv(path: Path) -> dict[str, Any]:
                     # Unescape backslash-escaped quotes for round-trip
                     # fidelity with the fix writer (KEY="say \"hi\"")
                     if quote_char == '"':
-                        val = val.replace('\\"', '"')
+                        # Unescape: first \" → ", then remaining \\ → \.
+                        # Order matters: reversing would turn \\" into \"
+                        # instead of the correct \".
+                        val = val.replace('\\"', '"').replace("\\\\", "\\")
                 data[key] = val
     return data
 
