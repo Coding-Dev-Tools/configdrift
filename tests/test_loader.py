@@ -10,48 +10,50 @@ from pathlib import Path
 class TestFlattenNested:
     def test_flat_dict_unchanged(self):
         data = {"host": "localhost", "port": 8080}
-        result = _flatten_nested(data)
+        result, _literal = _flatten_nested(data)
         assert result == {"host": "localhost", "port": 8080}
 
     def test_nested_dict_flattened(self):
         data = {"database": {"host": "localhost", "port": 5432}}
-        result = _flatten_nested(data)
+        result, _literal = _flatten_nested(data)
         assert result == {"database.host": "localhost", "database.port": 5432}
 
     def test_deeply_nested(self):
         data = {"a": {"b": {"c": "value"}}}
-        result = _flatten_nested(data)
+        result, _literal = _flatten_nested(data)
         assert result == {"a.b.c": "value"}
 
     def test_mixed_flat_and_nested(self):
         data = {"host": "localhost", "database": {"port": 5432}}
-        result = _flatten_nested(data)
+        result, _literal = _flatten_nested(data)
         assert result == {"host": "localhost", "database.port": 5432}
 
     def test_non_string_values_preserved(self):
         data = {"port": 8080, "debug": True, "ratio": 3.14}
-        result = _flatten_nested(data)
+        result, _literal = _flatten_nested(data)
         assert result["port"] == 8080
         assert result["debug"] is True
         assert result["ratio"] == 3.14
 
     def test_non_primitive_converted_to_str(self):
         data = {"tags": [1, 2, 3]}
-        result = _flatten_nested(data)
-        assert isinstance(result["tags"], str)
+        result, _literal = _flatten_nested(data)
+        assert isinstance(result["tags"], list)
 
     def test_empty_dict(self):
-        assert _flatten_nested({}) == {}
+        result, literal = _flatten_nested({})
+        assert result == {}
+        assert literal == {}
 
     def test_none_value_converted_to_empty_string(self):
         data = {"key": None}
-        result = _flatten_nested(data)
-        assert result["key"] == ""
+        result, _literal = _flatten_nested(data)
+        assert result["key"] is None
 
     def test_none_in_nested_dict(self):
         data = {"database": {"host": None, "port": 5432}}
-        result = _flatten_nested(data)
-        assert result["database.host"] == ""
+        result, _literal = _flatten_nested(data)
+        assert result["database.host"] is None
         assert result["database.port"] == 5432
 
 
@@ -106,7 +108,7 @@ class TestLoadJson:
         with tempfile.TemporaryDirectory() as tmpdir:
             p = Path(tmpdir) / "array.json"
             p.write_text(json.dumps([1, 2, 3]))
-            with pytest.raises(ValueError, match="mapping"):
+            with pytest.raises(ValueError, match="object|mapping"):
                 load_file(str(p))
 
 
@@ -178,9 +180,7 @@ class TestLoadDotenv:
         """Lines with 'export ' prefix should be parsed correctly."""
         with tempfile.TemporaryDirectory() as tmpdir:
             p = Path(tmpdir) / ".env"
-            p.write_text(
-                "export DATABASE_URL=postgres://localhost\nexport API_KEY=secret123\n"
-            )
+            p.write_text("export DATABASE_URL=postgres://localhost\nexport API_KEY=secret123\n")
             result = load_file(str(p))
             assert result["DATABASE_URL"] == "postgres://localhost"
             assert result["API_KEY"] == "secret123"
@@ -263,39 +263,43 @@ class TestLoadFileFallback:
 
 
 class TestNullValues:
-    """Integration tests: null/None values through the full loader pipeline."""
+    """Integration tests: null/None values through the full loader pipeline.
+
+    Nulls are preserved as None (not converted to empty string) so the fix
+    cycle can distinguish 'baseline is null' from 'baseline is empty string'.
+    """
 
     def test_yaml_null_through_load_file(self):
-        """YAML null values should become empty string via load_file."""
+        """YAML null values should be preserved as None via load_file."""
         with tempfile.TemporaryDirectory() as tmpdir:
             p = Path(tmpdir) / "test.yaml"
             p.write_text("host: null\nport: 8080\n")
             result = load_file(str(p))
-            assert result["host"] == ""
+            assert result["host"] is None
             assert result["port"] == 8080
 
     def test_yaml_tilde_null_through_load_file(self):
-        """YAML ~ (tilde null) should become empty string via load_file."""
+        """YAML ~ (tilde null) should be preserved as None via load_file."""
         with tempfile.TemporaryDirectory() as tmpdir:
             p = Path(tmpdir) / "test.yaml"
             p.write_text("debug: ~\n")
             result = load_file(str(p))
-            assert result["debug"] == ""
+            assert result["debug"] is None
 
     def test_json_null_through_load_file(self):
-        """JSON null values should become empty string via load_file."""
+        """JSON null values should be preserved as None via load_file."""
         with tempfile.TemporaryDirectory() as tmpdir:
             p = Path(tmpdir) / "test.json"
             p.write_text(json.dumps({"host": None, "port": 8080}))
             result = load_file(str(p))
-            assert result["host"] == ""
+            assert result["host"] is None
             assert result["port"] == 8080
 
     def test_nested_null_in_yaml_through_load_file(self):
-        """Nested YAML null values should become empty string."""
+        """Nested YAML null values should be preserved as None."""
         with tempfile.TemporaryDirectory() as tmpdir:
             p = Path(tmpdir) / "nested.yaml"
             p.write_text("database:\n  host: null\n  port: 5432\n")
             result = load_file(str(p))
-            assert result["database.host"] == ""
+            assert result["database.host"] is None
             assert result["database.port"] == 5432

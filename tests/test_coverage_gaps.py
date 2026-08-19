@@ -19,16 +19,12 @@ class TestStripInlineCommentToggles:
         # A value with a " inside it, followed by # outside quotes
         # The " should be detected as the start/end of double-quoting
         result = _strip_inline_comment('prefix "hello" # comment')
-        assert result == 'prefix "hello"', (
-            f"Expected comment stripped after quoted section, got: {result!r}"
-        )
+        assert result == 'prefix "hello"', f"Expected comment stripped after quoted section, got: {result!r}"
 
     def test_single_quote_toggle_with_hash(self):
         """Line 74: in_single should toggle when encountering ' outside double quotes."""
         result = _strip_inline_comment("prefix 'hello' # comment")
-        assert result == "prefix 'hello'", (
-            f"Expected comment stripped after quoted section, got: {result!r}"
-        )
+        assert result == "prefix 'hello'", f"Expected comment stripped after quoted section, got: {result!r}"
 
 
 class TestLoadDotenvQuoteStrip:
