@@ -67,3 +67,8 @@ nul
 
 # npm lock artifact (Python-only project)
 package-lock.json
+
+# Diagnostic artifacts from code review tooling
+_gql_threads.txt
+threads_dump.json
+*_dump.json
