@@ -280,6 +280,7 @@ def scan(
         raise typer.Exit(code=1)
 
     env_configs: dict[str, dict[str, Any]] = {}
+    files_loaded = 0
     for env_name, dir_path in dir_mapping.items():
         env_configs[env_name] = {}
         p = Path(dir_path)
@@ -294,8 +295,25 @@ def scan(
                 try:
                     data = load_file(str(f))
                     env_configs[env_name].update(data)
+                    files_loaded += 1
                 except Exception as e:
                     console.print(f"[yellow]Warning: could not load {f}: {e}[/yellow]")
+
+    # Silent-failure guard: if nothing was actually loaded, any "no drift"
+    # result would be a false green. Fail loudly instead.
+    if files_loaded == 0:
+        console.print(
+            "[red]ERROR: No config files could be loaded from any environment "
+            "directory. Refusing to report 'no drift' from an empty scan.[/red]"
+        )
+        raise typer.Exit(code=1)
+    if not env_configs.get(baseline):
+        console.print(
+            f"[red]ERROR: Baseline environment '{baseline}' loaded no config "
+            "keys; comparison against an empty baseline would flag every key "
+            "as drift.[/red]"
+        )
+        raise typer.Exit(code=1)
 
     results = diff_environments(env_configs, baseline_env=baseline)
 

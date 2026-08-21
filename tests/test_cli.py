@@ -473,3 +473,61 @@ class TestVersionCommand:
         assert result.exit_code == 0
         assert "configdrift" in result.stdout
         assert "0.1.0" in result.stdout
+
+
+class TestScanEmptyGuards:
+    """Regression: scan must not report a false-green 'no drift' when nothing loaded."""
+
+    def test_scan_all_dirs_missing_exits_1(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = runner.invoke(
+                app, ["scan", str(Path(tmpdir) / "nope1"), str(Path(tmpdir) / "nope2")]
+            )
+            assert result.exit_code == 1
+            # Either the baseline-not-found guard or the empty-scan guard fires.
+            assert (
+                "not found" in result.stdout
+                or "No config files could be loaded" in result.stdout
+            )
+
+    def test_scan_empty_dirs_exits_1(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dev = Path(tmpdir) / "dev"
+            prod = Path(tmpdir) / "prod"
+            dev.mkdir()
+            prod.mkdir()
+            result = runner.invoke(app, ["scan", str(dev), str(prod)])
+            assert result.exit_code == 1
+            assert "No config files could be loaded" in result.stdout
+
+    def test_scan_baseline_dir_missing_exits_1(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            prod = Path(tmpdir) / "prod"
+            prod.mkdir()
+            (prod / "config.yaml").write_text(yaml.dump({"host": "prod.example.com"}))
+            result = runner.invoke(app, ["scan", str(prod), "--baseline", "dev"])
+            assert result.exit_code == 1
+
+    def test_scan_baseline_loaded_nothing_exits_1(self):
+        """Baseline dir exists but only contains unparseable files -> refuse empty-baseline diff."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dev = Path(tmpdir) / "dev"
+            prod = Path(tmpdir) / "prod"
+            dev.mkdir()
+            prod.mkdir()
+            (dev / "broken.yaml").write_text(":::: not yaml :::\n")
+            (prod / "config.yaml").write_text(yaml.dump({"host": "prod.example.com"}))
+            result = runner.invoke(app, ["scan", str(dev), str(prod)])
+            assert result.exit_code == 1
+            assert "loaded no config" in result.stdout
+
+    def test_scan_healthy_still_works(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dev = Path(tmpdir) / "dev"
+            prod = Path(tmpdir) / "prod"
+            dev.mkdir()
+            prod.mkdir()
+            (dev / "config.yaml").write_text(yaml.dump({"host": "localhost"}))
+            (prod / "config.yaml").write_text(yaml.dump({"host": "prod.example.com"}))
+            result = runner.invoke(app, ["scan", str(dev), str(prod)])
+            assert result.exit_code == 0
