@@ -36,6 +36,8 @@ app = typer.Typer(
     invoke_without_command=True,
 )
 console = Console()
+# Warnings that must not pollute machine-readable (JSON) stdout go to stderr.
+_warn_console = Console(stderr=True)
 
 _require_license_strict: bool = False
 
@@ -283,21 +285,35 @@ def scan(
     files_loaded = 0
     for env_name, dir_path in dir_mapping.items():
         env_configs[env_name] = {}
+        key_sources: dict[str, str] = {}  # flattened key -> file that provided it
         p = Path(dir_path)
         if not p.is_dir():
             console.print(
                 f"[yellow]Warning: '{dir_path}' is not a directory, skipping.[/yellow]"
             )
             continue
-        # Load all supported config files in the directory and merge
+        # Load all supported config files in the directory and merge.
+        # Later files silently overwrite earlier ones via dict.update(); surface
+        # conflicting duplicate keys instead of letting glob order pick a winner.
         for ext in ("*.yaml", "*.yml", "*.json", "*.toml", "*.env"):
-            for f in p.glob(ext):
+            for f in sorted(p.glob(ext)):
                 try:
                     data = load_file(str(f))
-                    env_configs[env_name].update(data)
-                    files_loaded += 1
                 except Exception as e:
                     console.print(f"[yellow]Warning: could not load {f}: {e}[/yellow]")
+                    continue
+                for k, v in data.items():
+                    prev_file = key_sources.get(k)
+                    if prev_file is not None and env_configs[env_name].get(k) != v:
+                        _warn_console.print(
+                            f"[yellow]Warning: key '{k}' is defined with conflicting "
+                            f"values in {prev_file} and {f} (environment "
+                            f"'{env_name}'); using the value from {f} "
+                            "(alphabetical filename order).[/yellow]"
+                        )
+                    key_sources[k] = str(f)
+                env_configs[env_name].update(data)
+                files_loaded += 1
 
     # Silent-failure guard: if nothing was actually loaded, any "no drift"
     # result would be a false green. Fail loudly instead.
