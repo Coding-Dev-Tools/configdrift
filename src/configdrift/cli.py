@@ -15,20 +15,71 @@ try:
 except ImportError:
     import warnings
 
-    warnings.warn(
-        "revenueholdings-license not installed; license checks skipped", stacklevel=2
-    )
+    warnings.warn("revenueholdings-license not installed; license checks skipped", stacklevel=2)
 
     def require_license(product: str) -> None:  # type: ignore[misc]
         pass
 
 
 from configdrift import __version__
-from configdrift.diff import (
-    Severity,
-    diff_environments,
-)
-from configdrift.loader import load_file
+from configdrift._atomic import atomic_dump_toml, atomic_dump_yaml, atomic_write_text
+from configdrift.diff import Severity, diff_environments
+from configdrift.loader import get_literal_dotted_keys, has_dotted_collision, load_file
+
+
+def _json_null_handler(obj: Any) -> Any:
+    """JSON serializer for objects not serializable by default json code.
+
+    Handles None values and date/datetime objects that were preserved through
+    the flatten cycle so they serialize correctly instead of raising TypeError.
+    Date/datetime objects are serialized as ISO strings so cross-format
+    fixes converge (YAML date → JSON string won't keep reporting drift).
+    """
+    if obj is None:
+        return None
+    # Handle date/datetime objects from cross-format fixes (YAML/TOML → JSON)
+    import datetime
+
+    if isinstance(obj, datetime.datetime):
+        return obj.isoformat()
+    if isinstance(obj, datetime.date):
+        return obj.isoformat()
+    if isinstance(obj, datetime.time):
+        return obj.isoformat()
+    raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
+
+
+def _reconstruct_nested(flat_data: dict[str, Any], literal_dotted: dict[str, tuple[str, ...]]) -> dict[str, Any]:
+    """Rebuild nested dict from flat keys, respecting literal dotted keys.
+
+    ``literal_dotted`` maps each flattened key whose reconstruction path
+    differs from naive dot-splitting to the tuple of original key segments.
+    For example, ``{"service.config.host": ("service.config", "host")}``
+    means nest ``host`` under ``service.config`` (a literal dotted key).
+    """
+    nested: dict[str, Any] = {}
+    for k, v in flat_data.items():
+        if "." not in k:
+            nested[k] = v
+        elif k in literal_dotted:
+            parts = literal_dotted[k]
+            d = nested
+            for part in parts[:-1]:
+                if not isinstance(d.get(part), dict):
+                    d[part] = {}
+                d = d[part]
+            d[parts[-1]] = v
+        else:
+            # Regular flattened key — split all dots for nesting
+            parts = k.split(".")
+            d = nested
+            for part in parts[:-1]:
+                if not isinstance(d.get(part), dict):
+                    d[part] = {}
+                d = d[part]
+            d[parts[-1]] = v
+    return nested
+
 
 app = typer.Typer(
     name="configdrift",
@@ -68,12 +119,11 @@ def main(
 ) -> None:
     """ConfigDrift CLI — detect and fix configuration drift."""
     global _require_license_strict
-    _require_license_strict = require_license_flag or bool(
-        os.environ.get("REVENUEHOLDINGS_REQUIRE_LICENSE")
-    )
+    _require_license_strict = require_license_flag or bool(os.environ.get("REVENUEHOLDINGS_REQUIRE_LICENSE"))
     if _require_license_strict:
         try:
             from revenueholdings_license import require_license as _rl
+
             _rl("configdrift")
         except ImportError:
             console.print(
@@ -97,9 +147,7 @@ _DEFAULT_BASELINE = "dev"
 _DEFAULT_TARGET = "target"
 _DEFAULT_OUTPUT: OutputFormat = OutputFormat.TABLE
 _DEFAULT_STRICT = False
-_FILES_ARG = typer.Argument(
-    ..., help="Config files to compare (2+ files; first file is baseline)."
-)
+_FILES_ARG = typer.Argument(..., help="Config files to compare (2+ files; first file is baseline).")
 _BASELINE_OPT = typer.Option(
     _DEFAULT_BASELINE,
     "--baseline",
@@ -118,9 +166,7 @@ _OUTPUT_OPT = typer.Option(
     "-o",
     help="Output format: table, json, or silent (exit code only).",
 )
-_STRICT_OPT = typer.Option(
-    _DEFAULT_STRICT, "--strict", help="Exit 1 on ANY drift, not just breaking changes."
-)
+_STRICT_OPT = typer.Option(_DEFAULT_STRICT, "--strict", help="Exit 1 on ANY drift, not just breaking changes.")
 
 
 @app.command()
@@ -137,11 +183,7 @@ def check(
         raise typer.Exit(code=1)
 
     env_configs: dict[str, dict[str, Any]] = {}
-    env_labels = (
-        [baseline, target]
-        if len(files) == 2
-        else [f"file_{i + 1}" for i in range(len(files))]
-    )
+    env_labels = [baseline, target] if len(files) == 2 else [f"file_{i + 1}" for i in range(len(files))]
 
     for label, filepath in zip(env_labels, files, strict=False):
         try:
@@ -165,11 +207,7 @@ def check(
         _output_table(results, baseline_env)
 
     # Exit codes for CI gating
-    has_drift = (
-        any(r.count > 0 for r in results.values())
-        if strict
-        else any(r.has_breaking for r in results.values())
-    )
+    has_drift = any(r.count > 0 for r in results.values()) if strict else any(r.has_breaking for r in results.values())
     if has_drift:
         raise typer.Exit(code=1)
 
@@ -187,9 +225,7 @@ def _output_table(results: dict[str, Any], baseline_env: str) -> None:
         table.add_column("Severity", style="magenta")
 
         for change in diff_result.changes:
-            symbol = {"added": "+", "removed": "-", "changed": "~"}[
-                change.change_type.value
-            ]
+            symbol = {"added": "+", "removed": "-", "changed": "~"}[change.change_type.value]
             old_str = str(change.old_value) if change.old_value is not None else ""
             new_str = str(change.new_value) if change.new_value is not None else ""
             sev_style = (
@@ -270,9 +306,7 @@ def scan(
             env_name = Path(d).name
             dir_mapping[env_name] = d
     else:
-        console.print(
-            "[red]ERROR: Provide either --config or directories as arguments.[/red]"
-        )
+        console.print("[red]ERROR: Provide either --config or directories as arguments.[/red]")
         raise typer.Exit(code=1)
 
     if baseline not in dir_mapping:
@@ -284,9 +318,7 @@ def scan(
         env_configs[env_name] = {}
         p = Path(dir_path)
         if not p.is_dir():
-            console.print(
-                f"[yellow]Warning: '{dir_path}' is not a directory, skipping.[/yellow]"
-            )
+            console.print(f"[yellow]Warning: '{dir_path}' is not a directory, skipping.[/yellow]")
             continue
         # Load all supported config files in the directory and merge
         for ext in ("*.yaml", "*.yml", "*.json", "*.toml", "*.env"):
@@ -310,12 +342,403 @@ def scan(
     else:
         _output_table(results, baseline)
 
-    has_drift = (
-        any(r.count > 0 for r in results.values())
-        if strict
-        else any(r.has_breaking for r in results.values())
-    )
+    has_drift = any(r.count > 0 for r in results.values()) if strict else any(r.has_breaking for r in results.values())
     if has_drift:
+        raise typer.Exit(code=1)
+
+
+def _has_null_check(val: Any) -> bool:
+    """Recursively check whether a value contains None (for TOML validation)."""
+    if val is None:
+        return True
+    if isinstance(val, dict):
+        return any(_has_null_check(v) for v in val.values())
+    if isinstance(val, (list, tuple)):
+        return any(_has_null_check(v) for v in val)
+    return False
+
+
+@app.command()
+def fix(
+    files: list[str] = _FILES_ARG,
+    baseline: str = _BASELINE_OPT,
+    target: str = _TARGET_OPT,
+    dry_run: bool = typer.Option(  # noqa: B008
+        False, "--dry-run", "-n", help="Show what would change without modifying files."
+    ),
+) -> None:
+    baseline_path = Path(files[0])
+    if not baseline_path.exists():
+        console.print(f"[red]ERROR: Baseline file not found: {baseline_path}[/red]")
+        raise typer.Exit(code=1)
+    try:
+        baseline_data = load_file(str(baseline_path))
+    except Exception as e:
+        console.print(f"[red]Error loading baseline config: {e}[/red]")
+        raise typer.Exit(code=1) from e
+    if len(files) < 2:
+        console.print("[red]ERROR: fix requires at least one baseline and one target file.[/red]")
+        raise typer.Exit(code=1)
+
+    # Track targets that could not be fixed so the command returns a
+    # non-zero exit code when any target is missing, fails to load, or
+    # uses an unsupported format.
+    failed_targets: list[str] = []
+
+    # Process every supplied target file (not just files[1])
+    for target_file in files[1:]:
+        target_path = Path(target_file)
+        if not target_path.exists():
+            console.print(f"[red]ERROR: Target file not found: {target_path}[/red]")
+            failed_targets.append(str(target_path))
+            continue
+
+        try:
+            target_data = load_file(str(target_path))
+        except Exception as e:
+            console.print(f"[red]Error loading target config {target_path}: {e}[/red]")
+            failed_targets.append(str(target_path))
+            continue
+
+        changes = 0
+        # Detect dotenv target early so we can normalize boolean comparisons.
+        _target_ext = target_path.suffix.lower()
+        _target_is_dotenv = _target_ext == ".env" or target_path.name == ".env" or target_path.name.startswith(".env.")
+        for key, value in baseline_data.items():
+            # Distinguish missing keys from null values: a baseline null
+            # must restore a missing target key, not be silently skipped.
+            if key not in target_data:
+                changes += 1
+                if not dry_run:
+                    target_data[key] = value
+            else:
+                # When fixing a dotenv target, normalize all scalar baseline
+                # values to their string form so the comparison converges
+                # (8080 vs "8080" and True vs "true" would otherwise keep drifting).
+                cmp_value = value
+                if _target_is_dotenv:
+                    if isinstance(value, (dict, list, tuple)):
+                        # Collections cannot be represented in dotenv.
+                        # Count as drift so we don't silently report
+                        # "no drift" when the baseline has a collection
+                        # that the target cannot hold.
+                        changes += 1
+                        continue
+                    if value is None:
+                        cmp_value = ""
+                    elif isinstance(value, bool):
+                        cmp_value = "true" if value else "false"
+                    elif not isinstance(value, str):
+                        cmp_value = str(value)
+                # When fixing a JSON target, normalize temporal baseline values
+                # to ISO strings so the comparison converges (YAML date objects
+                # vs JSON ISO strings would otherwise drift forever despite
+                # identical output).
+                elif _target_ext == ".json":
+                    import datetime as _dt
+
+                    cmp_value = value.isoformat() if isinstance(value, (_dt.datetime, _dt.date, _dt.time)) else value
+                else:
+                    cmp_value = value
+                if target_data[key] != cmp_value:
+                    changes += 1
+                    if not dry_run:
+                        target_data[key] = cmp_value
+
+        # Skip write-back when no changes detected
+        if changes == 0:
+            if dry_run:
+                console.print(f"[yellow]Dry run: no changes needed in {target_path}[/yellow]")
+            else:
+                console.print(f"[green]No drift detected in {target_path}[/green]")
+            continue
+
+        if dry_run:
+            # Validate that the target format supports write-back even in
+            # dry-run mode so --dry-run accurately predicts whether the
+            # real run would succeed.
+            ext = target_path.suffix.lower()
+            # .env files need name-based detection: literal .env, or
+            # environment-suffixed variants like .env.prod, .env.dev
+            is_dotenv = ext == ".env" or target_path.name == ".env" or target_path.name.startswith(".env.")
+            supported_exts = {".json", ".yaml", ".yml", ".toml"}
+            if ext == ".toml":
+                try:
+                    import tomli_w  # noqa: F401
+                except ImportError:
+                    console.print(
+                        "[red]Error: tomli-w is required to write TOML files. Install with: pip install tomli-w[/red]"
+                    )
+                    failed_targets.append(str(target_path))
+                    continue
+                # Validate null compatibility during dry run against the
+                # prospectively merged data (target + baseline) so --dry-run
+                # accurately predicts the real-run rejection when baseline
+                # contributes nulls the target doesn't yet have.
+                prospective_toml = dict(target_data)
+                prospective_toml.update(baseline_data)
+                has_null = any(_has_null_check(v) for v in prospective_toml.values())
+                if has_null:
+                    null_keys = [k for k, v in prospective_toml.items() if _has_null_check(v)]
+                    console.print(
+                        f"[red]Error: TOML does not support null values. "
+                        f"Keys with null: {', '.join(null_keys[:5])}[/red]"
+                    )
+                    failed_targets.append(str(target_path))
+                    continue
+            # Validate dotenv keys and multiline values during dry run so
+            # --dry-run accurately predicts real-run rejections.
+            if is_dotenv:
+                import re as _dr_re
+
+                _DR_KEY = _dr_re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+                prospective_keys = set(baseline_data.keys()) | set(target_data.keys())
+                bad_keys = [k for k in prospective_keys if not isinstance(k, str) or not _DR_KEY.match(k)]
+                if bad_keys:
+                    console.print(
+                        f"[red]Error: dotenv keys must match [A-Za-z_][A-Za-z0-9_]*. "
+                        f"Invalid keys: {', '.join(str(k) for k in bad_keys[:5])}[/red]"
+                    )
+                    failed_targets.append(str(target_path))
+                    continue
+                # Check for multiline values or bare carriage returns
+                # that would corrupt the dotenv file. The real write
+                # path rejects both '\n' and bare '\r' (without '\n'),
+                # so the dry run must mirror that to avoid reporting
+                # false-success for unappliable fixes.
+                bad_multiline = [k for k, v in baseline_data.items() if isinstance(v, str) and ("\n" in v or "\r" in v)]
+                if bad_multiline:
+                    console.print(
+                        f"[red]Error: dotenv values must not contain newlines or carriage returns. "
+                        f"Keys with control characters: {', '.join(bad_multiline[:5])}[/red]"
+                    )
+                    failed_targets.append(str(target_path))
+                    continue
+                # Validate dotenv collection incompatibility during dry run
+                # so --dry-run accurately predicts real-run rejection.
+                bad_collections = [k for k, v in baseline_data.items() if isinstance(v, (dict, list, tuple))]
+                if bad_collections:
+                    console.print(
+                        f"[red]Error: dotenv cannot represent collection values. "
+                        f"Keys with collections: {', '.join(bad_collections[:5])}[/red]"
+                    )
+                    failed_targets.append(str(target_path))
+                    continue
+            # Validate prospective merged values for JSON targets during dry run
+            # so --dry-run accurately predicts real-run rejection of non-string
+            # keys or unserializable values.
+            if ext == ".json":
+                import json as _dry_json
+
+                # Build prospective merged data
+                prospective = dict(target_data)
+                prospective.update(baseline_data)
+                # Check for non-string keys in prospective merged data
+                prospective_non_str = [k for k in prospective if not isinstance(k, str)]
+                if prospective_non_str:
+                    console.print(
+                        f"[red]Error: JSON keys must be strings. "
+                        f"Non-string keys after merge: {', '.join(repr(k) for k in prospective_non_str[:5])}[/red]"
+                    )
+                    failed_targets.append(str(target_path))
+                    continue
+                # Test serialization of prospective merged data
+                try:
+                    _dry_json.dumps(prospective, default=_json_null_handler)
+                except (TypeError, ValueError) as _dry_ser_err:
+                    console.print(f"[red]Error: prospective JSON values not serializable: {_dry_ser_err}[/red]")
+                    failed_targets.append(str(target_path))
+                    continue
+            elif not is_dotenv and ext not in supported_exts:
+                console.print(f"[red]Error: unsupported format '{ext}' for write-back of {target_path}.[/red]")
+                failed_targets.append(str(target_path))
+                continue
+            console.print(f"[yellow]Dry run: {changes} key(s) would be updated in {target_path}[/yellow]")
+        else:
+            ext = target_path.suffix.lower()
+            is_dotenv = ext == ".env" or target_path.name == ".env" or target_path.name.startswith(".env.")
+            if ext == ".json":
+                import json as _json
+
+                # Reject non-string keys before JSON write-back.
+                # json.dumps coerces int keys to strings (1 → "1"), so
+                # reloading the JSON produces a string key that no longer
+                # matches the baseline's integer key, causing perpetual
+                # drift. It can also create duplicate names when the
+                # target already contains the string form.
+                non_str_keys = [k for k in target_data if not isinstance(k, str)]
+                if non_str_keys:
+                    console.print(
+                        f"[red]Error: JSON keys must be strings. "
+                        f"Non-string keys from baseline: {', '.join(repr(k) for k in non_str_keys[:5])}[/red]"
+                    )
+                    failed_targets.append(str(target_path))
+                    continue
+
+                # Reject ambiguous dotted-path collisions before
+                # reconstruction. A target like {"a.b": 1, "a": {"b": 2}}
+                # flattens to the single key "a.b" (the nested value
+                # wins), and reconstruction then writes only one
+                # mapping, silently deleting the other. Refuse to fix
+                # such targets so a real operator can resolve the
+                # ambiguity instead of losing data.
+                collisions = has_dotted_collision(target_data)
+                if collisions:
+                    console.print(
+                        f"[red]Error: target has ambiguous dotted-path collisions "
+                        f"that cannot be safely reconstructed: "
+                        f"{', '.join(repr(k) for k in collisions[:5])}[/red]"
+                    )
+                    failed_targets.append(str(target_path))
+                    continue
+                all_literal_dotted = get_literal_dotted_keys(str(baseline_path)) | get_literal_dotted_keys(
+                    str(target_path)
+                )
+                nested = _reconstruct_nested(target_data, all_literal_dotted)
+                try:
+                    _payload = _json.dumps(nested, indent=2, default=_json_null_handler) + "\n"
+                except (TypeError, ValueError) as _ser_err:
+                    console.print(f"[red]Error: cannot serialize target data to JSON: {_ser_err}[/red]")
+                    failed_targets.append(str(target_path))
+                    continue
+                atomic_write_text(target_path, _payload)
+            elif ext in (".yaml", ".yml"):
+                # Reject ambiguous dotted-path collisions before
+                # YAML reconstruction (same data-loss risk as JSON).
+                collisions = has_dotted_collision(target_data)
+                if collisions:
+                    console.print(
+                        f"[red]Error: target has ambiguous dotted-path collisions "
+                        f"that cannot be safely reconstructed: "
+                        f"{', '.join(repr(k) for k in collisions[:5])}[/red]"
+                    )
+                    failed_targets.append(str(target_path))
+                    continue
+                # Reconstruct nested structure from flat keys for YAML output
+                all_literal_dotted = get_literal_dotted_keys(str(baseline_path)) | get_literal_dotted_keys(
+                    str(target_path)
+                )
+                nested = _reconstruct_nested(target_data, all_literal_dotted)
+                atomic_dump_yaml(target_path, nested, default_flow_style=False, sort_keys=False)
+            elif ext == ".toml":
+                try:
+                    import tomli_w  # noqa: F401
+
+                    # Reject None values before building the TOML dict —
+                    # TOML has no null representation, so tomli_w would
+                    # raise TypeError on serialization. Check recursively
+                    # through lists and nested dicts for embedded nulls.
+                    def _has_null(val: Any) -> bool:
+                        if val is None:
+                            return True
+                        if isinstance(val, dict):
+                            return any(_has_null(v) for v in val.values())
+                        if isinstance(val, (list, tuple)):
+                            return any(_has_null(v) for v in val)
+                        return False
+
+                    null_keys = [k for k, v in target_data.items() if _has_null(v)]
+                    if null_keys:
+                        console.print(
+                            f"[red]Error: TOML does not support null values. "
+                            f"Keys with null: {', '.join(null_keys[:5])}[/red]"
+                        )
+                        failed_targets.append(str(target_path))
+                        continue
+                    all_literal_dotted = get_literal_dotted_keys(str(baseline_path)) | get_literal_dotted_keys(
+                        str(target_path)
+                    )
+                    nested_toml = _reconstruct_nested(target_data, all_literal_dotted)
+                    try:
+                        atomic_dump_toml(target_path, nested_toml)
+                    except (TypeError, ValueError) as _toml_err:
+                        console.print(f"[red]Error: cannot serialize target data to TOML: {_toml_err}[/red]")
+                        failed_targets.append(str(target_path))
+                        continue
+                except ImportError:
+                    console.print(
+                        "[red]Error: tomli-w is required to write TOML files. Install with: pip install tomli-w[/red]"
+                    )
+                    failed_targets.append(str(target_path))
+                    continue
+            elif is_dotenv:
+                # Handle .env targets: write flat KEY=VALUE format.
+                # Reject keys containing dots — _load_dotenv only accepts
+                # [A-Za-z_][A-Za-z0-9_]* identifiers, so dotted keys from
+                # flattened JSON/YAML baselines would be silently dropped
+                # on reload, causing perpetual drift.
+                import re as _dotenv_re
+
+                _DOTENV_KEY_RE = _dotenv_re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+                bad_keys = [k for k in target_data if not isinstance(k, str) or not _DOTENV_KEY_RE.match(k)]
+                if bad_keys:
+                    console.print(
+                        f"[red]Error: dotenv keys must match [A-Za-z_][A-Za-z0-9_]*. "
+                        f"Invalid keys: {', '.join(str(k) for k in bad_keys[:5])}[/red]"
+                    )
+                    failed_targets.append(str(target_path))
+                    continue
+                # Reject multiline values — newlines (\n) and carriage
+                # returns (\r) would corrupt the dotenv file by splitting
+                # a single KEY=VALUE across multiple physical lines.
+                # Readers using universal-newline handling treat \r as a
+                # line boundary, truncating the setting.
+                multiline_keys = [k for k, v in target_data.items() if isinstance(v, str) and ("\n" in v or "\r" in v)]
+                if multiline_keys:
+                    console.print(
+                        f"[red]Error: dotenv values must not contain newlines or "
+                        f"carriage returns. Keys affected: {', '.join(multiline_keys[:5])}[/red]"
+                    )
+                    failed_targets.append(str(target_path))
+                    continue
+                # Reject baseline collections that correspond to existing dotenv
+                # keys — dotenv cannot represent collections, so even when the
+                # target already has a scalar for this key, the baseline
+                # collection means drift is unresolvable.
+                baseline_collection_keys = [
+                    k for k, v in baseline_data.items() if isinstance(v, (dict, list, tuple)) and k in target_data
+                ]
+                if baseline_collection_keys:
+                    console.print(
+                        f"[red]Error: dotenv cannot represent collection values from baseline. "
+                        f"Keys: {', '.join(baseline_collection_keys[:5])}[/red]"
+                    )
+                    failed_targets.append(str(target_path))
+                    continue
+                lines = []
+                for k, v in target_data.items():
+                    # Reject non-scalar values that dotenv cannot represent
+                    if isinstance(v, (dict, list, tuple)):
+                        console.print(
+                            f"[red]Error: dotenv cannot represent collection values. "
+                            f"Key '{k}' has type {type(v).__name__}[/red]"
+                        )
+                        failed_targets.append(str(target_path))
+                        break
+                    # Convert Python booleans to lowercase for dotenv compatibility
+                    str_v = ("true" if v else "false") if isinstance(v, bool) else str(v) if v is not None else ""
+                    # Quote values containing whitespace (space, tab),
+                    # comments (#), or double quotes. Tabs at the start
+                    # or end are stripped by _load_dotenv's .strip(),
+                    # so quoting preserves them through round-trip.
+                    if " " in str_v or "\t" in str_v or "#" in str_v or '"' in str_v or "\\" in str_v:
+                        escaped = str_v.replace("\\", "\\\\").replace('"', '\\"')
+                        lines.append(f'{k}="{escaped}"')
+                    else:
+                        lines.append(f"{k}={str_v}")
+                else:
+                    atomic_write_text(target_path, "\n".join(lines) + "\n")
+                    continue
+            else:
+                console.print(f"[red]Error: unsupported format '{ext}' for write-back of {target_path}.[/red]")
+                failed_targets.append(str(target_path))
+                continue
+            console.print(f"[green]Fixed {changes} key(s) in {target_path}[/green]")
+
+    if failed_targets:
+        console.print(
+            f"[red]ERROR: {len(failed_targets)} target(s) could not be fixed: {', '.join(failed_targets)}[/red]"
+        )
         raise typer.Exit(code=1)
 
 

@@ -76,7 +76,7 @@ def _key_contains_critical_term(key: str, critical_terms: tuple[str, ...]) -> bo
 
         # Check for contiguous subsequence match (word boundary)
         for i in range(len(key_words) - term_len + 1):
-            if key_words[i:i + term_len] == term_words:
+            if key_words[i : i + term_len] == term_words:
                 return True
 
         # Also check concatenated form for MULTI-WORD terms only.
@@ -177,9 +177,7 @@ def diff_configs(
     return result
 
 
-def diff_environments(
-    env_configs: dict[str, dict[str, Any]], baseline_env: str = "dev"
-) -> dict[str, DiffResult]:
+def diff_environments(env_configs: dict[str, dict[str, Any]], baseline_env: str = "dev") -> dict[str, DiffResult]:
     """Compare multiple environments against a baseline."""
     if baseline_env not in env_configs:
         raise ValueError(f"Baseline environment '{baseline_env}' not found in configs")
