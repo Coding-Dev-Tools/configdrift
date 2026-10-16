@@ -26,6 +26,7 @@ except ImportError:
 from configdrift import __version__
 from configdrift.diff import (
     Severity,
+    _values_differ,
     diff_environments,
 )
 from configdrift.loader import load_file
@@ -280,15 +281,20 @@ def scan(
     if baseline not in dir_mapping:
         console.print(f"[red]Baseline environment '{baseline}' not found.[/red]")
         raise typer.Exit(code=1)
+    if len(dir_mapping) < 2:
+        console.print("[red]ERROR: Provide at least two environments to compare.[/red]")
+        raise typer.Exit(code=1)
 
     env_configs: dict[str, dict[str, Any]] = {}
     files_loaded = 0
+    files_per_env: dict[str, int] = {}
     for env_name, dir_path in dir_mapping.items():
         env_configs[env_name] = {}
+        files_per_env[env_name] = 0
         key_sources: dict[str, str] = {}  # flattened key -> file that provided it
         p = Path(dir_path)
         if not p.is_dir():
-            console.print(
+            _warn_console.print(
                 f"[yellow]Warning: '{dir_path}' is not a directory, skipping.[/yellow]"
             )
             continue
@@ -300,20 +306,21 @@ def scan(
                 try:
                     data = load_file(str(f))
                 except Exception as e:
-                    console.print(f"[yellow]Warning: could not load {f}: {e}[/yellow]")
+                    _warn_console.print(f"[yellow]Warning: could not load {f}: {e}[/yellow]")
                     continue
                 for k, v in data.items():
                     prev_file = key_sources.get(k)
-                    if prev_file is not None and env_configs[env_name].get(k) != v:
+                    if prev_file is not None and _values_differ(env_configs[env_name][k], v):
                         _warn_console.print(
                             f"[yellow]Warning: key '{k}' is defined with conflicting "
                             f"values in {prev_file} and {f} (environment "
                             f"'{env_name}'); using the value from {f} "
-                            "(alphabetical filename order).[/yellow]"
+                            "(supported extension order, then alphabetical filename order).[/yellow]"
                         )
                     key_sources[k] = str(f)
                 env_configs[env_name].update(data)
                 files_loaded += 1
+                files_per_env[env_name] += 1
 
     # Silent-failure guard: if nothing was actually loaded, any "no drift"
     # result would be a false green. Fail loudly instead.
@@ -330,6 +337,13 @@ def scan(
             "as drift.[/red]"
         )
         raise typer.Exit(code=1)
+    for env_name, count in files_per_env.items():
+        if count == 0:
+            console.print(
+                f"[red]ERROR: Environment '{env_name}' loaded no config files; "
+                "refusing an incomplete comparison.[/red]"
+            )
+            raise typer.Exit(code=1)
 
     results = diff_environments(env_configs, baseline_env=baseline)
 

@@ -190,7 +190,7 @@ class TestScanCommand:
             assert "prod" in data
 
     def test_scan_nonexistent_dir_warning(self):
-        """Scan with a non-directory path should warn and skip."""
+        """A missing requested environment warns on stderr and fails the scan."""
         with tempfile.TemporaryDirectory() as tmpdir:
             dev_dir = Path(tmpdir) / "dev"
             dev_dir.mkdir()
@@ -198,7 +198,8 @@ class TestScanCommand:
             fake_dir = Path(tmpdir) / "nonexistent"
 
             result = runner.invoke(app, ["scan", str(dev_dir), str(fake_dir)])
-            assert "is not a" in result.stdout.replace("\n", " ")
+            assert result.exit_code == 1
+            assert "is not a" in result.stderr.replace("\n", " ")
 
     def test_scan_unreadable_file_in_dir(self):
         """Scan should warn when a config file in a directory can't be loaded."""
