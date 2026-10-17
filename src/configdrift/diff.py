@@ -138,6 +138,10 @@ def _values_differ(old: Any, new: Any) -> bool:
     """
     if isinstance(old, bool) != isinstance(new, bool):
         return True
+    if isinstance(old, dict) and isinstance(new, dict):
+        return old.keys() != new.keys() or any(_values_differ(old[key], new[key]) for key in old)
+    if isinstance(old, list) and isinstance(new, list):
+        return len(old) != len(new) or any(_values_differ(a, b) for a, b in zip(old, new, strict=False))
     return old != new
 
 

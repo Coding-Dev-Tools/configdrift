@@ -271,7 +271,7 @@ def _output_json(results: dict[str, Any]) -> None:
             "has_breaking": diff_result.has_breaking,
             "count": diff_result.count,
         }
-    console.print(json.dumps(output, indent=2, default=str))
+    typer.echo(json.dumps(output, indent=2, default=str))
 
 
 @app.command()
@@ -489,7 +489,7 @@ def fix(
                     cmp_value = value.isoformat() if isinstance(value, (_dt.datetime, _dt.date, _dt.time)) else value
                 else:
                     cmp_value = value
-                if target_data[key] != cmp_value:
+                if _values_differ(target_data[key], cmp_value):
                     changes += 1
                     if not dry_run:
                         target_data[key] = cmp_value
