@@ -327,9 +327,7 @@ def scan(
         key_sources: dict[str, str] = {}  # flattened key -> file that provided it
         p = Path(dir_path)
         if not p.is_dir():
-            _warn_console.print(
-                f"[yellow]Warning: '{dir_path}' is not a directory, skipping.[/yellow]"
-            )
+            _warn_console.print(f"[yellow]Warning: '{dir_path}' is not a directory, skipping.[/yellow]")
             continue
         # Load all supported config files in the directory and merge.
         # Later files silently overwrite earlier ones via dict.update(); surface
@@ -373,8 +371,7 @@ def scan(
     for env_name, count in files_per_env.items():
         if count == 0:
             console.print(
-                f"[red]ERROR: Environment '{env_name}' loaded no config files; "
-                "refusing an incomplete comparison.[/red]"
+                f"[red]ERROR: Environment '{env_name}' loaded no config files; refusing an incomplete comparison.[/red]"
             )
             raise typer.Exit(code=1)
 

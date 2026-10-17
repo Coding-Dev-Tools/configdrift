@@ -447,15 +447,10 @@ class TestScanEmptyGuards:
 
     def test_scan_all_dirs_missing_exits_1(self):
         with tempfile.TemporaryDirectory() as tmpdir:
-            result = runner.invoke(
-                app, ["scan", str(Path(tmpdir) / "nope1"), str(Path(tmpdir) / "nope2")]
-            )
+            result = runner.invoke(app, ["scan", str(Path(tmpdir) / "nope1"), str(Path(tmpdir) / "nope2")])
             assert result.exit_code == 1
             # Either the baseline-not-found guard or the empty-scan guard fires.
-            assert (
-                "not found" in result.stdout
-                or "No config files could be loaded" in result.stdout
-            )
+            assert "not found" in result.stdout or "No config files could be loaded" in result.stdout
 
     def test_scan_empty_dirs_exits_1(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -488,6 +483,7 @@ class TestScanEmptyGuards:
             assert result.exit_code == 1
             assert "loaded no config" in result.stdout
 
+
 class TestScanKeyCollisionWarning:
     """Scan must warn when two files in one env define the same key differently."""
 
@@ -500,9 +496,7 @@ class TestScanKeyCollisionWarning:
             (dev / "a_app.yaml").write_text(yaml.dump({"host": "localhost"}))
             (dev / "b_extra.yaml").write_text(yaml.dump({"port": 8080}))
             (prod / "a_app.yaml").write_text(yaml.dump({"host": "one.example.com"}))
-            (prod / "b_extra.yaml").write_text(
-                yaml.dump({"host": "two.example.com", "port": 8080})
-            )
+            (prod / "b_extra.yaml").write_text(yaml.dump({"host": "two.example.com", "port": 8080}))
             result = runner.invoke(app, ["scan", str(dev), str(prod)])
             assert result.exit_code == 0, f"STDOUT: {result.stdout}"
             # Warning goes to stderr so JSON/table stdout stays machine-readable.
@@ -534,9 +528,7 @@ class TestScanKeyCollisionWarning:
             (dev / "c.yaml").write_text(yaml.dump({"host": "localhost"}))
             (prod / "a.yaml").write_text(yaml.dump({"host": "from-a"}))
             (prod / "z.yaml").write_text(yaml.dump({"host": "from-z"}))
-            result = runner.invoke(
-                app, ["scan", str(dev), str(prod), "--output", "json"]
-            )
+            result = runner.invoke(app, ["scan", str(dev), str(prod), "--output", "json"])
             assert result.exit_code == 0
             data = json.loads(result.stdout)
             host_change = next(c for c in data["prod"]["changes"] if c["key"] == "host")

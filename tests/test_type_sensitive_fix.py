@@ -1,12 +1,10 @@
 """Drift detection and fixes must agree on booleans inside container values."""
 
 import json
-
 import pytest
-from typer.testing import CliRunner
-
 from configdrift.cli import app
 from configdrift.diff import diff_configs
+from typer.testing import CliRunner
 
 
 @pytest.mark.parametrize("before,after", [(True, 1), ([True], [1]), ([{"enabled": True}], [{"enabled": 1}])])
