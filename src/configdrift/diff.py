@@ -128,6 +128,19 @@ class DiffResult:
         return [c for c in self.changes if c.severity == severity]
 
 
+def _values_differ(old: Any, new: Any) -> bool:
+    """Type-sensitive value comparison.
+
+    Python's ``==`` treats ``True == 1`` and ``False == 0``, so a config change
+    like ``debug: true -> debug: 1`` would silently compare equal. A drift
+    detector must flag cross-type changes (bool vs number) even when values
+    compare equal.
+    """
+    if isinstance(old, bool) != isinstance(new, bool):
+        return True
+    return old != new
+
+
 def diff_configs(
     base: dict[str, Any],
     target: dict[str, Any],
@@ -162,7 +175,7 @@ def diff_configs(
                     env=base_env,
                 )
             )
-        elif old_val != new_val:
+        elif _values_differ(old_val, new_val):
             result.changes.append(
                 Change(
                     key=key,
