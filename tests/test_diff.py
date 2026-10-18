@@ -287,8 +287,8 @@ class TestSeveritySubstringMatch:
 
     def test_diff_configs_detects_embedded_breaking(self):
         """End-to-end: diff_configs must surface BREAKING for embedded-term keys."""
-        base = {"db_password": "old_secret", "port": "8080"}
-        target = {"db_password": "new_secret", "port": "9090"}
+        base = {"db_password": "old_secret", "port": "8080"}  # pragma: allowlist secret - synthetic test fixture
+        target = {"db_password": "new_secret", "port": "9090"}  # pragma: allowlist secret - synthetic test fixture
         result = diff_configs(base, target)
         assert result.has_breaking, "expected BREAKING for db_password change"
 
