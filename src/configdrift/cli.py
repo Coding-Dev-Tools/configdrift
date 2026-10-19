@@ -23,7 +23,7 @@ except ImportError:
 
 from configdrift import __version__
 from configdrift._atomic import atomic_dump_toml, atomic_dump_yaml, atomic_write_text
-from configdrift.diff import Severity, diff_environments
+from configdrift.diff import Severity, _values_differ, diff_environments
 from configdrift.loader import get_literal_dotted_keys, has_dotted_collision, load_file
 
 
@@ -87,6 +87,8 @@ app = typer.Typer(
     invoke_without_command=True,
 )
 console = Console()
+# Warnings that must not pollute machine-readable (JSON) stdout go to stderr.
+_warn_console = Console(stderr=True)
 
 _require_license_strict: bool = False
 
@@ -269,7 +271,7 @@ def _output_json(results: dict[str, Any]) -> None:
             "has_breaking": diff_result.has_breaking,
             "count": diff_result.count,
         }
-    console.print(json.dumps(output, indent=2, default=str))
+    typer.echo(json.dumps(output, indent=2, default=str))
 
 
 @app.command()
@@ -312,22 +314,66 @@ def scan(
     if baseline not in dir_mapping:
         console.print(f"[red]Baseline environment '{baseline}' not found.[/red]")
         raise typer.Exit(code=1)
+    if len(dir_mapping) < 2:
+        console.print("[red]ERROR: Provide at least two environments to compare.[/red]")
+        raise typer.Exit(code=1)
 
     env_configs: dict[str, dict[str, Any]] = {}
+    files_loaded = 0
+    files_per_env: dict[str, int] = {}
     for env_name, dir_path in dir_mapping.items():
         env_configs[env_name] = {}
+        files_per_env[env_name] = 0
+        key_sources: dict[str, str] = {}  # flattened key -> file that provided it
         p = Path(dir_path)
         if not p.is_dir():
-            console.print(f"[yellow]Warning: '{dir_path}' is not a directory, skipping.[/yellow]")
+            _warn_console.print(f"[yellow]Warning: '{dir_path}' is not a directory, skipping.[/yellow]")
             continue
-        # Load all supported config files in the directory and merge
+        # Load all supported config files in the directory and merge.
+        # Later files silently overwrite earlier ones via dict.update(); surface
+        # conflicting duplicate keys instead of letting glob order pick a winner.
         for ext in ("*.yaml", "*.yml", "*.json", "*.toml", "*.env"):
-            for f in p.glob(ext):
+            for f in sorted(p.glob(ext)):
                 try:
                     data = load_file(str(f))
-                    env_configs[env_name].update(data)
                 except Exception as e:
-                    console.print(f"[yellow]Warning: could not load {f}: {e}[/yellow]")
+                    _warn_console.print(f"[yellow]Warning: could not load {f}: {e}[/yellow]")
+                    continue
+                for k, v in data.items():
+                    prev_file = key_sources.get(k)
+                    if prev_file is not None and _values_differ(env_configs[env_name][k], v):
+                        _warn_console.print(
+                            f"[yellow]Warning: key '{k}' is defined with conflicting "
+                            f"values in {prev_file} and {f} (environment "
+                            f"'{env_name}'); using the value from {f} "
+                            "(supported extension order, then alphabetical filename order).[/yellow]"
+                        )
+                    key_sources[k] = str(f)
+                env_configs[env_name].update(data)
+                files_loaded += 1
+                files_per_env[env_name] += 1
+
+    # Silent-failure guard: if nothing was actually loaded, any "no drift"
+    # result would be a false green. Fail loudly instead.
+    if files_loaded == 0:
+        console.print(
+            "[red]ERROR: No config files could be loaded from any environment "
+            "directory. Refusing to report 'no drift' from an empty scan.[/red]"
+        )
+        raise typer.Exit(code=1)
+    if not env_configs.get(baseline):
+        console.print(
+            f"[red]ERROR: Baseline environment '{baseline}' loaded no config "
+            "keys; comparison against an empty baseline would flag every key "
+            "as drift.[/red]"
+        )
+        raise typer.Exit(code=1)
+    for env_name, count in files_per_env.items():
+        if count == 0:
+            console.print(
+                f"[red]ERROR: Environment '{env_name}' loaded no config files; refusing an incomplete comparison.[/red]"
+            )
+            raise typer.Exit(code=1)
 
     results = diff_environments(env_configs, baseline_env=baseline)
 
@@ -440,7 +486,7 @@ def fix(
                     cmp_value = value.isoformat() if isinstance(value, (_dt.datetime, _dt.date, _dt.time)) else value
                 else:
                     cmp_value = value
-                if target_data[key] != cmp_value:
+                if _values_differ(target_data[key], cmp_value):
                     changes += 1
                     if not dry_run:
                         target_data[key] = cmp_value

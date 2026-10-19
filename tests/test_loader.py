@@ -183,7 +183,7 @@ class TestLoadDotenv:
             p.write_text("export DATABASE_URL=postgres://localhost\nexport API_KEY=secret123\n")
             result = load_file(str(p))
             assert result["DATABASE_URL"] == "postgres://localhost"
-            assert result["API_KEY"] == "secret123"
+            assert result["API_KEY"] == "secret123"  # pragma: allowlist secret - synthetic test fixture
 
     def test_dotenv_inline_comment_unquoted(self):
         """Unquoted inline comments should be stripped from values."""

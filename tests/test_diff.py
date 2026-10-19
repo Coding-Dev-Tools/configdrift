@@ -287,8 +287,8 @@ class TestSeveritySubstringMatch:
 
     def test_diff_configs_detects_embedded_breaking(self):
         """End-to-end: diff_configs must surface BREAKING for embedded-term keys."""
-        base = {"db_password": "old_secret", "port": "8080"}
-        target = {"db_password": "new_secret", "port": "9090"}
+        base = {"db_password": "old_secret", "port": "8080"}  # pragma: allowlist secret - synthetic test fixture
+        target = {"db_password": "new_secret", "port": "9090"}  # pragma: allowlist secret - synthetic test fixture
         result = diff_configs(base, target)
         assert result.has_breaking, "expected BREAKING for db_password change"
 
@@ -392,3 +392,37 @@ class TestKeyContainsCriticalTerm:
 
     def test_no_match(self):
         assert _key_contains_critical_term("cache_ttl", ("database", "auth")) is False
+
+
+class TestTypeSensitiveComparison:
+    """bool-vs-number equivalence hole: True == 1 in Python must still be drift."""
+
+    def test_bool_true_vs_int_one_is_change(self):
+        result = diff_configs({"debug": True}, {"debug": 1})
+        assert result.count == 1
+        change = result.changes[0]
+        assert change.change_type == ChangeType.CHANGED
+        assert change.old_value is True
+        assert change.new_value == 1
+
+    def test_bool_false_vs_int_zero_is_change(self):
+        result = diff_configs({"debug": False}, {"debug": 0})
+        assert result.count == 1
+        assert result.changes[0].change_type == ChangeType.CHANGED
+
+    def test_same_bool_values_not_drift(self):
+        assert diff_configs({"debug": True}, {"debug": True}).count == 0
+
+    def test_same_int_values_not_drift(self):
+        assert diff_configs({"port": 5432}, {"port": 5432}).count == 0
+
+    def test_str_vs_int_still_detected(self):
+        assert diff_configs({"port": "5432"}, {"port": 5432}).count == 1
+
+    def test_bool_vs_string_detected(self):
+        assert diff_configs({"debug": True}, {"debug": "true"}).count == 1
+
+    def test_nested_flattened_key_bool_vs_number(self):
+        base = {"app.debug": True}
+        target = {"app.debug": 1}
+        assert diff_configs(base, target).count == 1
